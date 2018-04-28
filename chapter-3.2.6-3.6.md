@@ -743,14 +743,70 @@ CUDA 数组支持 16 位的浮点型或称作半精度的格式，都是和 IEEE
 立方体贴图的寻址采用的是三个 texture 坐标x, y, z，可以理解为立方体中心射出的方向向量并指向其中一个面的层内的纹素。更具体来说，该面是由坐标和最大幅值 m 来选择的，而对应的层是由 (s/m+1)/2 和 (t/m+1)/2 坐标来寻址的， s 和 t 如下表所定义。
 
  **Table 1. Cubemap Fetch**
- &nbsp; | &nbsp; | face | m | s | t |
----|---|---|---|---|---|
-\|x\| > \|y\| and \|x\| > \|z\| | x>=0 | 0 | x | -z | -y |
-同上 | x < 0 | 1 | -x | z | -y |
-\|y\| > \|x\| and \|y\| > \|z\| | y>=0 | 2 | y | x | z |
-同上 | y < 0 | 3 | -y | x | -z |
-\|z\| > \|x\| and \|z\| > \|y\| | z>=0 | 4 | z | x | -y |
-同上 | z < 0 | 5 | -z | -x | -y |
+
+<table>
+  <tr>
+    <th> </th>
+    <th> </th>
+    <th>face</th>
+	<th>m</th>
+	<th>s</th>
+	<th>t</th>
+  </tr>
+  <tr>
+    <td>|x| > |y| and |x| > |z|</td>
+    <td>x>=0</td>
+    <td>0</td>
+	<td>x</td>
+	<td>-z</td>
+	<td>-y</td>
+  </tr>
+  <tr>
+    <td> </td>
+    <td>x<0</td>
+    <td>1</td>
+	<td>-x</td>
+	<td>z</td>
+	<td>-y</td>
+  </tr>
+  <tr>
+    <td>|y| > |x| and |y| > |z|</td>
+    <td>y>=0</td>
+    <td>2</td>
+	<td>y</td>
+	<td>x</td>
+	<td>z</td>
+  </tr>
+  <tr>
+    <td> </td>
+    <td>y<0</td>
+    <td>3</td>
+	<td>-y</td>
+	<td>x</td>
+	<td>-z</td>
+  </tr>
+  <tr>
+    <td>|z| > |x| and |z| > |y|</td>
+    <td>z>=0</td>
+    <td>4</td>
+	<td>z</td>
+	<td>x</td>
+	<td>-y</td>
+  </tr>
+  <tr>
+    <td> </td>
+    <td>z<0</td>
+    <td>5</td>
+	<td>-z</td>
+	<td>-x</td>
+	<td>-y</td>
+  </tr>
+</table>
+
+作者：cxuan
+链接：https://www.jianshu.com/p/7a655e5345b2
+來源：简书
+著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。
 
 > A layered texture can only be a CUDA array by calling cudaMalloc3DArray() with the cudaArrayCubemap flag. 
 
