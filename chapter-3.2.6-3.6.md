@@ -803,11 +803,6 @@ CUDA 数组支持 16 位的浮点型或称作半精度的格式，都是和 IEEE
   </tr>
 </table>
 
-作者：cxuan
-链接：https://www.jianshu.com/p/7a655e5345b2
-來源：简书
-著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。
-
 > A layered texture can only be a CUDA array by calling cudaMalloc3DArray() with the cudaArrayCubemap flag. 
 
 分层纹理只能是通过调用 *cudaMalloc3DArray()* 并且标志位为 *cudaArrayCubemap* 创建的CUDA 数组
