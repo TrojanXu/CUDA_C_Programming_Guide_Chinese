@@ -1,4 +1,5 @@
 # 5. Performance Guidelines
+性能优化指南
 
 标签（空格分隔）： CUDA
 
@@ -20,21 +21,22 @@ CUDA性能优化围绕三个基本策略展开：
 
 - 最大化并行度以实现最大利用率;
 - 内存优化，以实现最大内存吞吐量;
-- 指令优化，以达到最大指令吞吐量。
+- 指令优化，以实现最大指令吞吐量。
 
 ----------
 
     Which strategies will yield the best performance gain for a particular portion of an application depends on the performance limiters for that portion; optimizing instruction usage of a kernel that is mostly limited by memory accesses will not yield any significant performance gain, for example. Optimization efforts should therefore be constantly directed by measuring and monitoring the performance limiters, for example using the CUDA profiler. Also, comparing the  or  - whichever makes more sense - of a particular kernel to the corresponding peak theoretical throughput of the device indicates how much room for improvement there is for the kernel.
 
-对程序进行优化时不能盲目的使用优化策略，某个优化策略能够获得的性能提升取决于程序的性能瓶颈。比如，一个kernel的性能瓶颈是访存，那么指令优化不会产生明显的性能提升。因此，在进行CUDA优化之前，应该先通过CUDA分析器（NVPP，nvprof）分析出程序的性能瓶颈，再选择对应的优化策略进行优化工作。直接简单的做法就是，将kernel的某个性能指标（比如，浮点运算吞吐量，floating-point operation throughput，或内存吞吐量，memory throughput）与GPU设备的相应理论峰值进行比较，可以得出该kernel在这方面还有多大的提升空间。
+对程序进行优化时不能盲目的使用优化策略，某个优化策略能够获得的性能提升取决于程序的性能瓶颈。比如，一个kernel的性能瓶颈是访存，那么指令类优化策略不会产生明显的性能提升。因此，在进行CUDA优化之前，应该先通过CUDA分析器（NVPP，nvprof）分析出程序的性能瓶颈，再选择对应的优化策略进行优化。直接简单的做法就是，将kernel的某个性能指标（比如，浮点运算吞吐量，floating-point operation throughput，或内存吞吐量，memory throughput）与GPU设备的相应理论峰值进行比较，可以得出该kernel在这方面还有多大的提升空间。
 
 ----------
 
 ## 5.2. Maximize Utilization
-## 5.2  最大化利用率
+## 5.2  如何最大化利用率
     To maximize utilization the application should be structured in a way that it exposes as much parallelism as possible and efficiently maps this parallelism to the various components of the system to keep them busy most of the time.
 
-为了最大化GPU利用率，应该尽可能的发掘程序的并行性，从而充分的利用GPU资源，保证GPU的各个模块大部分时间都处于忙碌状态。
+为了最大化GPU利用率，应该从多个层次尽可能的发掘程序的并行性，从而充分的利用GPU资源，保证GPU的各个模块大部分时间都处于忙碌状态。
+下面将从上到下，依次从应用层次，设备层次，Multiprocessor层次三个层次，探究如何最大化GPU利用率
 
 ----------
 
@@ -42,32 +44,37 @@ CUDA性能优化围绕三个基本策略展开：
 ### 5.2.1  应用层次
     At a high level, the application should maximize parallel execution between the host, the devices, and the bus connecting the host to the devices, by using asynchronous functions calls and streams as described in Asynchronous Concurrent Execution. It should assign to each processor the type of work it does best: serial workloads to the host; parallel workloads to the devices.
 
-在最上层的应用层次，应该使用异步执行特性（异步函数和流，见 Asynchronous Concurrent Execution章节）最大化主机端（host）任务、设备端（device）任务和主机设备通信任务的并行性。基本准则：串行任务分配到host端运行，并行任务分配到device上运行。
+在应用层次，应该使用异步执行特性（异步函数和流，见 Asynchronous Concurrent Execution章节）最大化主机端（host）任务、设备端（device）任务和主机设备通信任务的并行性。基本准则：串行任务分配到host端运行，并行任务分配到device上运行。
 
     For the parallel workloads, at points in the algorithm where parallelism is broken because some threads need to synchronize in order to share data with each other, there are two cases: Either these threads belong to the same block, in which case they should use __syncthreads() and share data through shared memory within the same kernel invocation, or they belong to different blocks, in which case they must share data through global memory using two separate kernel invocations, one for writing to and one for reading from global memory. The second case is much less optimal since it adds the overhead of extra kernel invocations and global memory traffic. Its occurrence should therefore be minimized by mapping the algorithm to the CUDA programming model in such a way that the computations that require inter-thread communication are performed within a single thread block as much as possible.
 
-在并行任务中，某些情况下一些线程需要进行互相通信，此时需要线程同步操作，常见有以下两种情况，（1）这些线程在一个线程块中（block），这时使用__syncthreads()函数进行同步，并使用共享内存存储数据进行通信；（2）如果不在同一个block中，这种情况下必须使用两个独立的kernel，一个负责向全局内存（Global Memory）写数据，一个负责读数据。很明显，第二种情况增大了额外的kernel调用开销和Global Memory读写开销，性能不理想。因此在设计并行算法时，应该尽可能将需要通信的线程放到一个block中。
+在并行任务中，某些情况下一些线程需要进行互相通信，此时需要线程同步操作，常见有以下两种情况，（1）这些线程在一个线程块（block）中，这时使用__syncthreads()函数进行同步即可，并使用共享内存存储数据进行通信；（2）如果不在同一个block中，这种情况下必须使用两个独立的kernel，一个kernel负责向全局内存（Global Memory）写数据，一个kernel负责读数据。很明显，第二种情况会产生额外的kernel调用开销和Global Memory读写开销，不是理想情况。因此在设计并行算法时，应该尽可能将需要通信的线程放到一个block中。
 
 ----------
 
-5.2.2. Device Level
-    
+### 5.2.2. Device Level
+### 5.2.2. 设备层次
+    
     At a lower level, the application should maximize parallel execution between the multiprocessors of a device.
     
-在下一个层次，设备层次中，应用程序应该最大限度地提高SM之间的并行执行。
+在设备层次中，应该设计应用程序，最大限度地提高multiprocessors的并行执行。
 
     Multiple kernels can execute concurrently on a device, so maximum utilization can also be achieved by using streams to enable enough kernels to execute concurrently as described in Asynchronous Concurrent Execution.
-多个kernel可以同时在一个设备上执行，因此如《异步并行执行》章节中所述，使用stream技术来保证同时执行的kernel足够多，从而实现最大化利用率。
+多个kernel可以同时在一个GPU上运行，如《异步并行执行》章节中所述，应该使用stream技术来保证同时执行的kernel足够多，从而实现最大化利用率。
 
-5.2.3. Multiprocessor Level
+### 5.2.3. Multiprocessor Level
+### 5.2.3. Multiprocessor 层次
 
     At an even lower level, the application should maximize parallel execution between the various functional units within a multiprocessor.
-在更低层次，Multiprocessor层次中，应用程序应该最大化Multiprocessor内各功能单元之间的并行执行。
+在Multiprocessor层次中，应该最大化Multiprocessor内各功能单元之间的并行执行。
 
     As described in Hardware Multithreading, a GPU multiprocessor relies on thread-level parallelism to maximize utilization of its functional units. Utilization is therefore directly linked to the number of resident warps. At every instruction issue time, a warp scheduler selects a warp that is ready to execute its next instruction, if any, and issues the instruction to the active threads of the warp. The number of clock cycles it takes for a warp to be ready to execute its next instruction is called the latency, and full utilization is achieved when all warp schedulers always have some instruction to issue for some warp at every clock cycle during that latency period, or in other words, when latency is completely "hidden". 
-    The number of instructions required to hide a latency of L clock cycles depends on the respective throughputs of these instructions (see Arithmetic Instructions for the throughputs of various arithmetic instructions). Assuming maximum throughput for all instructions, it is: 8L for devices of compute capability 3.x since a multiprocessor issues a pair of instructions per warp over one clock cycle for four warps at a time, as mentioned in Compute Capability 3.x.
 
-如硬件多线程章节中所述，GPU SM 依赖于线程级并行机制来最大限度地利用其功能单元。因此，利用率与执行中 warp 的数量有直接关系。在每个指令发射周期，一个warp调度器选择一个处于准备状态的warp（如果有的话）执行下一条指令，然后发布指令给warp中的活跃线程。延迟（latency）即一个warp准备好执行下一条指令所花费的时钟周期数。充分利用资源，需要在每个时钟周期内，都有一些指令经过warp调度器发射给warp执行，换句话说，就是要完全隐藏latency。完全隐藏L时钟周期 的latency所需要的指令数目取决于各指令的吞吐量（即执行指令所需要的时钟周期）（请参阅Arithmetic Instructions以了解各种算术指令的吞吐量）。在计算能力3.x的设备上，假设所有指令的吞吐量都是最大（8时钟周期），那么就需要在一个时钟周期内向4个warp发射两条指令，才能隐藏latency（如计算能力3.x章节中所述）。
+如硬件多线程章节中所述，为了最大化 GPU multiprocessor各个功能单元的利用率，需要尽可能的最大化线程并行度。也就是说，利用率与执行状态warp的数量有直接关系。在每个指令发射周期，一个warp调度器选择一个处于准备状态的warp（如果有的话）执行其下一条指令，然后发射指令给该warp中的活跃线程。延迟（latency）即一个warp准备好执行下一条指令所花费的时钟周期数。实现充分利用资源，需要在每个时钟周期内，都有一些指令经过warp调度器发射给warp执行，不存在空闲时钟周期，换句话说，就是latency被完全隐藏了。
+--------------------------------------------------------------------------------------------------
+
+The number of instructions required to hide a latency of L clock cycles depends on the respective throughputs of these instructions (see Arithmetic Instructions for the throughputs of various arithmetic instructions). Assuming maximum throughput for all instructions, it is: 8L for devices of compute capability 3.x since a multiprocessor issues a pair of instructions per warp over one clock cycle for four warps at a time, as mentioned in Compute Capability 3.x.
+完全隐藏L时钟周期 的latency所需要的指令数目取决于各指令的吞吐量（即执行指令所需要的时钟周期）（请参阅Arithmetic Instructions以了解各种算术指令的吞吐量）。在计算能力3.x的设备上，假设所有指令的吞吐量都是最大（8时钟周期），那么就需要在一个时钟周期内向4个warp发射两条指令，才能隐藏latency（如计算能力3.x章节中所述）。
 
     For devices of compute capability 3.x, the eight instructions issued every cycle are four pairs for four different warps, each pair being for the same warp.
 
