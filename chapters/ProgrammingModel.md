@@ -24,7 +24,7 @@ CUDA threads that execute that kernel for a given kernel call is specified using
 that executes the kernel is given a unique thread ID that is accessible within the kernel
 through the built-in threadIdx variable.
 ```
-Kernel通过**\_\_global\_\_**声明符定义。对于给定的kernel调用，通过新引入的执行配置语法**<<<...>>>**进行配置（参考C语言扩展[link]）。执行kernel的每个thread会被分配一个独有的thread ID，可以通过内置变量**threadIdx**在kernel内访问。
+Kernel通过 **\_\_global\_\_** 声明符定义。对于给定的kernel调用，通过新引入的执行配置语法 **<<<...>>>** 进行配置（参考C语言扩展[link]）。执行kernel的每个thread会被分配一个独有的thread ID，可以通过内置变量 **threadIdx** 在kernel内访问。
 ```
 As an illustration, the following sample code adds two vectors A and B of size N and
 stores the result into vector C:
@@ -49,7 +49,7 @@ VecAdd<<<1, N>>>(A, B, C);
 ```
 Here, each of the N threads that execute VecAdd() performs one pair-wise addition.
 ```
-这里，执行**VecAdd()**的N个thread每个都执行一次pair-wise的相加。
+这里，执行 **VecAdd()** 的N个thread每个都执行一次pair-wise的相加。
 
 ## 2.2 Thread层次
 ```
@@ -107,8 +107,8 @@ blocks.
 Blocks are organized into a one-dimensional, two-dimensional, or three-dimensional
 grid of thread blocks as illustrated by Figure 6. The number of thread blocks in a grid is usually dictated by the size of the data being processed or the number of processors in the system, which it can greatly exceed.
 ```
-Block被组织成一维、二维或者三维的*grid*，如图6所示。一般而言，构成一个grid的thread block数目与需要处理的data的大小或者系统中processor的数目相关(通常来说可以远远超过这个数目,译者注：可以根据processor数目来设定grid内thread block的数目，而不是上限取决于processor数)
-![figure_6](../resources/6.png)
+Block被组织成一维、二维或者三维的*grid*，如图6所示。一般而言，构成一个grid的thread block数目与需要处理的data的大小或者系统中processor的数目相关(通常来说可以远远超过这个数目,译者注：可以根据processor数目来设定grid内thread block的数目，而不是上限取决于processor数)  
+![figure_6](../resources/figure_6.png)
 
 图6. Thread block构成grid
 ```
@@ -116,7 +116,7 @@ The number of threads per block and the number of blocks per grid specified in t
 <<<...>>> syntax can be of type int or dim3. Two-dimensional blocks or grids can be
 specified as in the example above.
 ```
-每个block的thread数目和每个grid的block数目可以在<<<...>>>语法中定义，类型是int或者dim3。二维的block或者grid的定义与上文示例中的类似。
+每个block的thread数目和每个grid的block数目可以在 **<<<...>>>** 语法中定义，类型是int或者dim3。二维的block或者grid的定义与上文示例中的类似。
 ```
 Each block within the grid can be identified by a one-dimensional, two-dimensional,
 or three-dimensional index accessible within the kernel through the built-in blockIdx
@@ -128,7 +128,7 @@ Grid中的每个block可以通过一维、二维或者三维的索引唯一标�
 Extending the previous MatAdd() example to handle multiple blocks, the code becomes
 as follows.
 ```
-我们将上文**MatAdd()**示例代码进行扩展，使用多个block：
+我们将上文 **MatAdd()** 示例代码进行扩展，使用多个block：
 ```C
 // Kernel 定义
 __global__ void MatAdd(float A[N][N], float B[N][N],
@@ -173,13 +173,13 @@ block must wait before any is allowed to proceed. Shared Memory gives an example
 using shared memory. In addition to __syncthreads(), the Cooperative Groups API
 provides a rich set of thread-synchronization primitives.
 ```
-一个block内的thread可以相互协作，这是通过shared memory共享数据以及同步执行协调memory access来实现的。进一步地来说，我们可以通过在kernel中调用**__syncthreads()**内置函数来定义同步点；**__syncthreads()**设置了一个barrier，block内的所有thread必须在此等待而不能单独地执行下去。Shared Memory[link]给出了一个使用shared memory的示例。除了**__syncthreads()**，Cooperative Groups API[link]还提供了一系列的thread同步原语。
+一个block内的thread可以相互协作，这是通过shared memory共享数据以及同步执行协调memory access来实现的。进一步地来说，我们可以通过在kernel中调用 **\_\_syncthreads()** 内置函数来定义同步点；**\_\_syncthreads()** 设置了一个barrier，block内的所有thread必须在此等待而不能单独地执行下去。Shared Memory[link]给出了一个使用shared memory的示例。除了 **\_\_syncthreads()**，Cooperative Groups API[link]还提供了一系列的thread同步原语。 
 ```
 For efficient cooperation, the shared memory is expected to be a low-latency memory
 near each processor core (much like an L1 cache) and __syncthreads() is expected to
 be lightweight.
 ```
-为了实现有限的协作，我们期望shared memory更接近于processor core来获得low latency（更像L1 cache） 以及 **__syncthreads()** 可以是一个轻量级的函数。
+为了实现高效的协作，我们期望shared memory更接近于processor core来获得low latency（更像L1 cache） 以及 **\_\_syncthreads()** 可以是一个轻量级的函数。
 
 ## 2.3 Memory层次
 ```
@@ -187,8 +187,8 @@ CUDA threads may access data from multiple memory spaces during their execution
 as illustrated by Figure 7. Each thread has private local memory. Each thread block has
 shared memory visible to all threads of the block and with the same lifetime as the block. All threads have access to the same global memory.
 ```
-CUDA thread在执行的时候可以从多个memory space访问数据，如图7所示。每个thread有私有的local memory。 每个thread block有shard memory，它对block内的所有thread可见，并且与block有相同的生命周期。所有的thread可以访问相同的global memory。
-![figure_7](../resources/7.png)
+CUDA thread在执行的时候可以从多个memory space访问数据，如图7所示。每个thread有私有的local memory。 每个thread block有shard memory，它对block内的所有thread可见，并且与block有相同的生命周期。所有的thread可以访问相同的global memory。  
+![figure_7](../resources/figure_7.png)
 
 图7. Memory层次
 ```
@@ -198,7 +198,7 @@ are optimized for different memory usages (see Device Memory Accesses). Texture
 memory also offers different addressing modes, as well as data filtering, for some
 specific data formats (see Texture and Surface Memory).
 ```
-所有thread还能访问另外两种只读memory space：costant memory和texture memory。Global memory，constant memory，texture memory是根据不同memory使用优化的（参见device memory的访问[link]）。此外，texture memory针对某些特殊的数据格式，提供不同的寻址模式和数据滤波（参见Texture和Surface memory[link]）。
+所有thread还能访问另外两种只读memory space：costant memory和texture memory。Global memory，constant memory，texture memory是根据不同memory使用进行优化的（参见device memory的访问[link]）。此外，texture memory针对某些特殊的数据格式，提供不同的寻址模式和数据滤波（参见Texture和Surface memory[link]）。
 ```
 The global, constant, and texture memory spaces are persistent across kernel launches
 by the same application.
@@ -211,8 +211,8 @@ As illustrated by Figure 8, the CUDA programming model assumes that the CUDA
 threads execute on a physically separate device that operates as a coprocessor to the host running the C program. This is the case, for example, when the kernels execute on a
 GPU and the rest of the C program executes on a CPU.
 ```
-根据图8所示，CUDA变成模型假设CUDA threads在一个物理独立的*device*上运行，*host*执行C程序，*device*如同*host*的协处理器。比如举例来说，kernel在GPU上执行，而其余C程序在CPU上执行。
-![figure_8](../resources/8.png)
+根据图8所示，CUDA编程模型假设CUDA threads在一个物理独立的*device*上运行，*host*执行C程序，*device*如同*host*的协处理器。比如举例来说，kernel在GPU上执行，而其余C程序在CPU上执行。
+![figure_8](../resources/figure_8.png)
 
 图8. 串行代码在host执行而并行代码在device执行
 ```
@@ -232,7 +232,7 @@ oversubscription of device memory and can greatly simplify the task of porting
 applications by eliminating the need to explicitly mirror data on host and device. See
 Unified Memory Programming for an introduction to Unified Memory.”
 ```
-Unified memory提供了一种*managed memory*用于建立host和device memory space间的联系。Managed memory是一种拥有通用寻址空间的单一一致的memory image，可以从系统中的所有CPU和GPU上访问到。这种能力使得注册超过device memory物理大小的memory space成为可能，从而尅避免显式地创建host和device间的数据镜像，极大地简化了应用的移植。关于Unified memory的介绍可以参见Unified memory编程章节[link]。
+Unified memory提供了一种*managed memory*用于建立host和device memory space间的联系。Managed memory是一种拥有通用寻址空间的单一一致的memory image，可以从系统中的所有CPU和GPU上访问到。这种能力使得注册超过device memory物理大小的memory space成为可能，从而可避免显式地创建host和device间的数据镜像，极大地简化了应用的移植。关于Unified memory的介绍可以参见Unified memory编程章节[link]。
 
 ## 2.5 计算能力
 ```

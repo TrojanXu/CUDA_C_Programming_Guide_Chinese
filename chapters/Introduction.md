@@ -7,10 +7,10 @@ multithreaded, manycore processor with tremendous computational horsepower and
 very high memory bandwidth, as illustrated by Figure 1 and Figure 2.
 ```
 市场对实时的、高精度的三维图形的需求是无法满足的，在这种需求的推动下，可编程图形处理器（GPU)已演变成高并行度、多线程的多核处理器，同时具有强大的计算能力和极高的存储器带宽，如图1和2所示：
-![figure_1](../resources/1.png)
+![figure_1](../resources/figure_1.png)
 图1. CPU和GPU的每秒浮点运算能力对比
 
-![figure_2](../resources/2.png)
+![figure_2](../resources/figure_2.png)
 图2. CPU和GPU的存储器带宽对比
 
 ```
@@ -20,8 +20,8 @@ GPU is that the GPU is specialized for compute-intensive, highly parallel comput
 transistors are devoted to data processing rather than data caching and flow control, as
 schematically illustrated by Figure 3.
 ```
-造成CPU和GPU之间浮点运算能力的差距的原因在于，GPU是针对高计算密度和高并行化的场景设计的，图形渲染就属于这一类型的，这样就有更多的晶体管用来做数据处理而不是数据的缓存和流控，如图3所示
-![figure_3](../resources/3.png)
+造成CPU和GPU之间浮点运算能力的差距的原因在于，GPU是针对高计算密度和高并行化的场景设计的，图形渲染就属于这一类型，这样就有更多的晶体管用来做数据处理而不是数据的缓存和流控，如图3所示
+![figure_3](../resources/figure_3.png)
 图3. GPU上更多的晶体管用于数据处理
 
 ```
@@ -29,7 +29,7 @@ More specifically, the GPU is especially well-suited to address problems that ca
 expressed as data-parallel computations - the same program is executed on many data
 elements in parallel - with high arithmetic intensity - the ratio of arithmetic operations to memory operations. Because the same program is executed for each data element, there is a lower requirement for sophisticated flow control, and because it is executed on many data elements and has high arithmetic intensity, the memory access latency can be hidden with calculations instead of big data caches.
 ```
-具体来说，GPU非常适合于一些可以被抽象成data parallel的计算，即并行地对多个数据单元做相同的高计算密度（计算操作/存储器操作）的操作。由于在每个数据元素上执行同样的程序，我们就不需要复杂的流控，并且由于在大量的数据元素上同时执行，计算密度高。存储器访问的latency可以通过大量的计算隐藏（译者注：在大量的计算的同时，即将使用的数据可以提前准备，在真正使用数据的时候已经准备好，看起来像读取数据的过程被隐藏了）而无需使用大的cache。
+具体来说，GPU非常适合于解决一些可以被抽象成data parallel的计算问题，即并行地对多个数据单元做相同的高计算密度（计算操作/存储器操作）的操作。由于在每个数据元素上执行同样的程序，我们就不需要复杂的流控，并且由于在大量的数据元素上同时执行并且计算密度高，存储器访问的latency可以通过大量的计算隐藏而无需使用大的cache。（译者注：在大量的计算的同时，下一步使用的数据可以提前准备，在真正使用数据的时候已经准备好，看起来像读取数据的过程被隐藏了）
 
 ```
 Data-parallel processing maps data elements to parallel processing threads. Many
@@ -51,7 +51,7 @@ platform and programming model that leverages the parallel compute engine in
 NVIDIA GPUs to solve many complex computational problems in a more efficient way
 than on a CPU.
 ```
-NVIDIA在2016年11月发布了CUDA，将其定义为一种通用并行计算平台和编程模型。相比于CPU，CUDA利用NVIDIA GPU中的并行计算引擎来更高效地解决复杂的计算问题。
+NVIDIA在2016年11月发布了CUDA®，将其定义为一种通用并行计算平台和编程模型。相比于CPU，CUDA利用NVIDIA GPU中的并行计算引擎来更高效地解决复杂的计算问题。
 
 ```
 CUDA comes with a software environment that allows developers to use C as a highlevel
@@ -60,7 +60,7 @@ programming interfaces, or directives-based approaches are supported, such as
 FORTRAN, DirectCompute, OpenACC.
 ```
 CUDA提供了允许开发者使用C作为编程语言的的软件环境。如图4所示，其他语言、应用编程接口（API）或者编译制导（directive-based）的方法都有所支持，例如FORTRAN，DirectCompute和OpenACC。
-![figure_4](../resources/4.png)
+![figure_4](../resources/figure_4.png)
 图4. GPU计算应用
 
 CUDA设计的初衷是支持多种语言和API
@@ -89,7 +89,7 @@ At its core are three key abstractions - a hierarchy of thread groups, shared me
 and barrier synchronization - that are simply exposed to the programmer as a minimal
 set of language extensions.
 ```
-CUDA的核心是三种关键的抽象：thread group（线程组）的层次，shared memories（共享内存） 和 barrier synchronization（栅栏同步）。这是呈现给程序员的最小语言扩展集。
+CUDA的核心是三种关键的抽象：thread group（线程组）的层次，shared memories（共享内存） 和 barrier synchronization（栅栏同步）。这是呈现给程序员的最小的语言扩展集。
 
 ```
 These abstractions provide fine-grained data parallelism and thread parallelism,
@@ -109,7 +109,7 @@ program can execute on any number of multiprocessors as illustrated by Figure 5,
 only the runtime system needs to know the physical multiprocessor count.
 ```
 这种分解通过允许多个thread可以协作处理子问题从而保留了语言的表达性，同时还能实现自动扩展。实际上，每个thread block可以以任何的顺序、并行或串行地被调度在GPU上任何一个可能的多处理器上（multiprocessor）上，这就使得一个编译得到的CUDA程序可以在任何数量的multiprocessor上执行，如图5所示，只有运行时(Runtime)系统需要知道处理器物理multiprocessor数。
-![figure_5](../resources/5.png)
+![figure_5](../resources/figure_5.png)
 图5. 自动扩展性
 
 ```
@@ -158,7 +158,7 @@ as well as more architectural details.
 programming model.
 ```
 本篇文档按如下章节组织：
-- 第一章，简介，CUDA介绍
+- 第一章，简介，介绍CUDA
 - 第二章，编程模型，概述编程模型
 - 第三章，编程接口，介绍编程接口
 - 第四章，硬件实现，介绍硬件实现
@@ -173,4 +173,4 @@ programming model.
 - 附录，计算能力，给出了各种设备的技术规范和更多架构细节
 - 附录，驱动API，介绍底层驱动API
 - 附录，CUDA环境变量，列出了所有CUDA相关的环境变量
-- 附录，Unified Memory编程，介绍了unified memory变成模型
+- 附录，Unified Memory编程，介绍了unified memory编程模型

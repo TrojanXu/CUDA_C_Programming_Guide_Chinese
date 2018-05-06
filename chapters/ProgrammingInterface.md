@@ -7,7 +7,7 @@ CUDA C为熟悉C编程语言的人提供了简单快捷的方法来写出可以�
 ```
 It consists of a minimal set of extensions to the C language and a runtime library.
 ```
-CUDA C包括C语言的最小扩展集和运行时库。
+CUDA C包括一个C语言的最小扩展集和运行时库。
 ```
 The core language extensions have been introduced in Programming Model. They allow
 programmers to define a kernel as a C function and use some new syntax to specify the
@@ -15,7 +15,7 @@ grid and block dimension each time the function is called. A complete descriptio
 extensions can be found in C Language Extensions. Any source file that contains some of
 these extensions must be compiled with nvcc as outlined in Compilation with NVCC.
 ```
-核心的语言扩展在编程模型[link]章节中已经介绍过。这些扩展允许程序员像定义C函数一样定义一个kernel，以及使用一些新的语法来定义每次函数调用时的grid和block尺寸。完整的扩展描述可以参考C语言扩展章节[link]。如同使用NVCC编译章节[link]提到的，包含这些扩展的源文件必须用**nvcc**编译。
+核心的语言扩展在编程模型[link]章节中已经介绍过。这些扩展允许程序员像定义C函数一样定义一个kernel，以及使用一些新的语法来定义每次函数调用时的grid和block尺寸。完整的扩展描述可以参考C语言扩展章节[link]。如同使用NVCC编译章节[link]提到的，包含这些扩展的源文件必须用 **nvcc** 编译。
 ```
 The runtime is introduced in Compilation Workflow. It provides C functions that
 execute on the host to allocate and deallocate device memory, transfer data between host
@@ -33,7 +33,7 @@ need this additional level of control and when using the runtime, context and mo
 management are implicit, resulting in more concise code. The driver API is introduced
 in Driver API and fully described in the reference manual.
 ```
-Runtime是建立在更底层的C API之上的，即CUDA driver API，它同样可以被应用程序访问。Driver API将更底层的概念暴露给用户从而提供额外的控制，诸如CUDA contexts（类似于device对应的host进程）、CUDA modules（类似于device上动态加载的库）。大多数应用不需要调用driver API因为它们不需要这一层面的控制。当使用runtime的时候，context和module的管理是隐式的，代码更加简洁。Driver API在驱动API章节[link]介绍，完整的描述请参考reference manual。
+Runtime是建立在更底层的C API之上的，即CUDA driver API，它同样可以被应用程序访问。Driver API将更底层的概念暴露给用户从而提供额外的控制，诸如CUDA contexts（类似于device对应的host进程）、CUDA modules（类似于device上动态加载的库）。大多数应用不需要调用driver API，因为它们不需要这一层面的控制。当使用runtime的时候，context和module的管理是隐式的，代码更加简洁。Driver API在驱动API章节[link]介绍，完整的描述请参考reference manual。
 
 ## 3.1 使用NVCC编译
 ```
@@ -42,14 +42,14 @@ is described in the PTX reference manual. It is however usually more effective t
 high-level programming language such as C. In both cases, kernels must be compiled
 into binary code by nvcc to execute on the device.
 ```
-Kernel可以用CUDA指令集架构编写，称为*PTX*，具体描述参见PTX reference manual。一般而言使用C这样的高级语言会更高效。使用任意一种方式来编写，都需要将kernel代码使用**nvcc**编译成二进制代码才能在device上执行。
+Kernel可以用CUDA指令集架构编写，称为*PTX*，具体描述参见PTX reference manual。一般而言使用C这样的高级语言会更高效。使用任意一种方式来编写，都需要将kernel代码使用 **nvcc** 编译成二进制代码才能在device上执行。
 ```
 nvcc is a compiler driver that simplifies the process of compiling C or PTX code: It
 provides simple and familiar command line options and executes them by invoking the
 collection of tools that implement the different compilation stages. This section gives an overview of nvcc workflow and command options. A complete description can be
 found in the nvcc user manual.
 ```
-**nvcc**是一个编译器驱动，它简化了编译C代码或者PTX代码的过程。它提供了简单常用的命令行选项并通过调用了一些列实现不同编译阶段的工具来执行。这一章介绍**nvcc**的工作流和命令选项。完整的介绍请参照**nvcc** user manual。
+**nvcc** 是一个编译器驱动，它简化了编译C代码或者PTX代码的过程。它提供了简单常用的命令行选项并通过调用了一系列实现不同编译阶段的工具来执行。这一章介绍 **nvcc** 的工作流和命令选项。完整的介绍请参照**nvcc** user manual。
 
 ### 3.1.1 编译流程
 #### 3.1.1.1 离线编译
@@ -64,9 +64,9 @@ Kernels (and described in more details in Execution Configuration) by the necess
 CUDA C runtime function calls to load and launch each compiled kernel from the
 PTX code and/or cubin object.
 ```
-使用**nvcc**编译的原文件可以包含host和device混合的代码（即在host执行的代码和在device执行的代码）。**nvcc**的基本流程包含于一些操作中，先将device代码从host代码中分离出来，然后：
-‣ 将device代码编译成汇编的形式（*PTX*代码）和/或二进制形式（*cubin*对象），
-‣ 并修改host代码，将在kernel中引入的**<<<...>>>**语法（在执行配置[link]中有更详细的介绍）用必要的CUDA C runtime函数调用替换，从而从*PTX*代码和/或*cubin*对象来加载并调用编译好的kernel。
+使用 **nvcc** 编译的原文件可以包含host和device混合的代码（即在host执行的代码和在device执行的代码）。**nvcc** 的基本流程包含于一些操作中，先将device代码从host代码中分离出来，然后：  
+‣ 将device代码编译成汇编的形式（*PTX*代码）和/或二进制形式（*cubin*对象），  
+‣ 并修改host代码，将在kernel中引入的 **<<<...>>>** 语法（在执行配置[link]中有更详细的介绍）用必要的CUDA C runtime函数调用替换，从而从*PTX*代码和/或*cubin*对象来加载并调用编译好的kernel。
 ```
 The modified host code is output either as C code that is left to be compiled using
 another tool or as object code directly by letting nvcc invoke the host compiler during
@@ -76,7 +76,7 @@ Applications can then:
 ‣ Or ignore the modified host code (if any) and use the CUDA driver API (see Driver
 API) to load and execute the PTX code or cubin object.
 ```
-修改后的host代码可以输出成C代码然后用其他工具编译，也可以直接让**nvcc**在最后编译阶段调用host端的编译器编译成object代码。  
+修改后的host代码可以输出成C代码然后用其他工具编译，也可以直接让 **nvcc** 在最后编译阶段调用host端的编译器编译成object代码。  
 然后应用程序可以：  
 ‣ 链接到编译好的host代码（一般是这种情形），  
 ‣ 或者忽略修改过后的host代码（如果有的话）并使用CUDA driver API 来加载和执行*PTX*代码或*cubin*对象。
@@ -90,7 +90,7 @@ compiler improvements coming with each new device driver. It is also the only wa
 for applications to run on devices that did not exist at the time the application was
 compiled, as detailed in Application Compatibility.
 ```
-应用程序在runtime加载的*PTX*代码会被device driver进一步地编译成二进制代码。这个过程成为*Just-in-time编译*。Just-in-time编译增加了应用程序加载的时间，但是这使得应用程序可以在每次device driver更新后受益于新的编译器改进。这也是让应用程序可以运行在编译时还不存在的以后的设备上的唯一方式，在应用兼容性[link]会有详细介绍。
+应用程序在runtime加载的*PTX*代码会被device driver进一步地编译成二进制代码。这个过程成为*Just-in-time编译*。Just-in-time编译增加了应用程序加载的时间，但是这使得应用程序可以在每次device driver更新后受益于新的编译器改进。这也是让应用程序可以运行在编译时还不存在的未来的设备上的唯一方式，在应用兼容性[link]会有详细介绍。
 ```
 When the device driver just-in-time compiles some PTX code for some application, it
 automatically caches a copy of the generated binary code in order to avoid repeating
@@ -133,7 +133,7 @@ earlier PTX version may not make use of some hardware features. For example, a b
 targeting devices of compute capability 7.0 (Volta) compiled from PTX generated for
 compute capability 6.0 (Pascal) will not make use of Tensor Core instructions, since these were not available on Pascal. As a result, the final binary may perform worse than would be possible if the binary were generated using the latest version of PTX.
 ```
-针对特定计算能力生成的*PTX*代码总是可以被编译成同等或者更高计算能力devic对应的二进制代码。请注意通过较早版本的*PTX*代码编译得到的二进制代码不一定能使用某些新的硬件特性。例如，*PTX*代码是为计算能力6.0（Pascal）生成的，使用该*PTX*代码为计算能力7.0（Volta）的device生成的二进制代码就不能使用Tensor Core指令，因为Pascal并不支持这个指令。这将会导致最终的二进制代码的性能不及使用最新的*PTX*代码生成的二进制代码。
+针对特定计算能力生成的*PTX*代码总是可以被编译成同等或者更高计算能力device对应的二进制代码。请注意，通过较早版本的*PTX*代码编译得到的二进制代码不一定能使用某些新的硬件特性。例如，*PTX*代码是为计算能力6.0（Pascal）生成的，使用该*PTX*代码为计算能力7.0（Volta）的device生成的二进制代码就不能使用Tensor Core指令，因为Pascal并不支持这个指令。这将会导致最终的二进制代码的性能不及使用最新的*PTX*代码生成的二进制代码。
 
 ### 3.1.4 应用兼容性
 ```
@@ -144,7 +144,7 @@ on future architectures with higher compute capability (for which no binary code
 generated yet), an application must load PTX code that will be just-in-time compiled for
 these devices (see Just-in-Time Compilation).
 ```
-为了在特定计算能力的device上执行代码，应用程序必须加载兼容计算能力的二进制或者*PTX*代码，如二进制兼容性[link]和*PTX*兼容性[link]中所述。特别地，为了在拥有更高计算能力的将来的架构上也能执行代码，对应的二进制代码现在还不能够被生成，应用程序必须加载*PTX*代码通过just-in-time编译得到可执行代码（参照Just-in-Time编译[link]）。
+为了在特定计算能力的device上执行代码，应用程序必须加载兼容计算能力的二进制或者*PTX*代码，如二进制兼容性[link]和*PTX*兼容性[link]中所述。特别地，为了在拥有更高计算能力的未来的架构上也能执行代码，对应的二进制代码现在还不能够被生成，应用程序必须加载*PTX*代码通过just-in-time编译得到可执行代码（参照Just-in-Time编译[link]）。
 ```
 Which PTX and binary code gets embedded in a CUDA C application is controlled by
 the -arch and -code compiler options or the -gencode compiler option as detailed in
@@ -162,7 +162,7 @@ embeds binary code compatible with compute capability 3.5 and 5.0 (first and sec
 -gencode options) and PTX and binary code compatible with compute capability 6.0
 (third -gencode option).
 ```
-集成了兼容计算能力3.5和5.0的二进制代码（第一和第二个 **-gencode** 选项）和兼容计算能力6.0的*PTX*和二进制代码（第三 **-gencode** 选项）。
+集成了兼容计算能力3.5和5.0的二进制代码（第一和第二个 **-gencode** 选项）和兼容计算能力6.0的*PTX*和二进制代码（第三个 **-gencode** 选项）。
 ```
 Host code is generated to automatically select at runtime the most appropriate code to
 load and execute, which, in the above example, will be:
@@ -184,7 +184,7 @@ __CUDA_ARCH__ macro can be used to differentiate various code paths based on
 compute capability. It is only defined for device code. When compiling with -
 arch=compute_35 for example, __CUDA_ARCH__ is equal to 350.
 ```
-举个例子，**x.cu**使用warp shuffle操作能够得到最优的代码路径，而这些操作只被计算能力大于等于3.0的device支持。**\_\_CUDA_ARCH\_\_** 宏可以用来根据不同计算能力区分不同的代码路径。它只定义在device代码内。当使用 **-arch=compute_35** 编译的时候，**__CUDA_ARCH__** 等于**350**。
+举个例子，**x.cu** 使用warp shuffle操作能够得到最优的代码路径，而这些操作只被计算能力大于等于3.0的device支持。**\_\_CUDA_ARCH\_\_** 宏可以用来根据不同计算能力区分不同的代码路径。它只定义在device代码内。当使用 **-arch=compute_35** 编译的时候，**__CUDA_ARCH__** 等于**350**。
 ```
 Applications using the driver API must compile code to separate files and explicitly load
 and execute the most appropriate file at runtime.
@@ -220,12 +220,12 @@ supported for the device code as described in C/C++ Language Support.
 ```
 The 64-bit version of nvcc compiles device code in 64-bit mode (i.e., pointers are 64-bit). Device code compiled in 64-bit mode is only supported with host code compiled in 64-bit mode.
 ```
-64位的 **nvcc** 将device代码以64位模式编译，即指针式64位的。当host代码是64位模式编译的时候，device代码才支持以64位模式编译。
+64位的 **nvcc** 将device代码以64位模式编译，即指针是64位的。当host代码是64位模式编译的时候，64位模式编译的device代码才被支持。
 ```
 Similarly, the 32-bit version of nvcc compiles device code in 32-bit mode and device
 code compiled in 32-bit mode is only supported with host code compiled in 32-bit mode.
 ```
-同样的，32位的 **nvcc** 将device代码以32位模式编译。只有当host代码是以32位模式编译的情况下，device代码才支持以32位模式编译。
+同样的，32位的 **nvcc** 将device代码以32位模式编译。只有当host代码是以32位模式编译的情况下，32位模式编译的device代码才被支持。
 ```
 The 32-bit version of nvcc can compile device code in 64-bit mode also using the -m64
 compiler option.
