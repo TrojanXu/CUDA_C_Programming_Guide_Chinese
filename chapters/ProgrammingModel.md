@@ -276,9 +276,9 @@ add native support for a new GPU architecture by supporting the compute capabili
 version of that architecture, new versions of the CUDA platform typically also include
 software features that are independent of hardware generation.
 ```
-```
-不要将一个GPU的计算能力的版本与CUDA版本（比如说CUDA 7.5，CUDA 8，CUDA 9）混淆起来，后者是CUDA软件平台的版本。CUDA平台用于应用开发者创建可以运行在不同的GPU架构上的应用，包括现在还没有定义的未来的架构。新版本的CUDA平台通常会通过支持对应新架构的SM版本号来为一些新的GPU架构提供原生的支持。新版本的CUDA一般来说也会提供一些独立于硬件迭代的软件上的特性。
-```
+
+> 不要将一个GPU的计算能力的版本与CUDA版本（比如说CUDA 7.5，CUDA 8，CUDA 9）混淆起来，后者是CUDA软件平台的版本。CUDA平台用于应用开发者创建可以运行在不同的GPU架构上的应用，包括现在还没有定义的未来的架构。新版本的CUDA平台通常会通过支持对应新架构的SM版本号来为一些新的GPU架构提供原生的支持。新版本的CUDA一般来说也会提供一些独立于硬件迭代的软件上的特性。
+
 ```
 The Tesla and Fermi architectures are no longer supported starting with CUDA 7.0 and
 CUDA 9.0, respectively.
