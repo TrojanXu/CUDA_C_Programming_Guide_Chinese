@@ -54,7 +54,7 @@ CUDA性能优化围绕三个基本策略展开：
 
 ### 5.2.2. Device Level
 ### 5.2.2. 设备层次
-    
+    
     At a lower level, the application should maximize parallel execution between the multiprocessors of a device.
     
 在设备层次中，应该设计应用程序，最大限度地提高multiprocessors的并行执行。
@@ -88,49 +88,47 @@ The number of instructions required to hide a latency of L clock cycles depends 
 
 **This is also assuming enough instruction-level parallelism so that schedulers are always able to issue pairs of instructions for each warp.这也假设了足够的指令级并行性，以便调度程序始终能够为每个warp发出指令对。没懂**
 
-    If some input operand resides in off-chip memory, the latency is much higher: 200 to 400 clock cycles for devices of compute capability 3.x. The number of warps required to keep the warp schedulers busy during such high latency periods depends on the kernel code and its degree of instruction-level parallelism. In general, more warps are required if the ratio of the number of instructions with no off-chip memory operands (i.e., arithmetic instructions most of the time) to the number of instructions with off-chip memory operands is low (this ratio is commonly called the arithmetic intensity of the program). For example, assume this ratio is 30, also assume the latencies are 300 cycles on devices of compute capability 3.x. Then about 40 warps are required for devices of compute capability 3.x (with the same assumptions as in the previous paragraph).
+    If some input operand resides in off-chip memory, the latency is much higher: 200 to 400 clock cycles for devices of compute capability 3.x. The number of warps required to keep the warp schedulers busy during such high latency periods depends on the kernel code and its degree of instruction-level parallelism. In general, more warps are required if the ratio of the number of instructions with no off-chip memory operands (i.e., arithmetic instructions most of the time) to the number of instructions with off-chip memory operands is low (this ratio is commonly called the arithmetic intensity of the program). For example, assume this ratio is 30, also assume the latencies are 300 cycles on devices of compute capability 3.x. Then about 40 warps are required for devices of compute capability 3.x (with the same assumptions as in the previous paragraph).
 如果指令的输入操作数位于片外（off-chip）存储器中，那么latency会更长：对于计算能力3.x的设备，通常需要200至400个时钟周期。 在如此长的等待时间内保持warp调度器繁忙所需的warp数量取决于kernel代码及其指令级并行度。 这里引入一个比率概念，这个比率通常被称为运算强度（Arithmetic Intensity），是指一个程序内，输入操作数不位于片外内存上的指令数目（通常是算数指令） / 输入操作数位于片外内存上的指令数目。Arithmetic Intensity越小，代表需要同时执行更多的warp才能隐藏latency。 例如，在计算能力3.x的设备上，假设运算强度为30，latency为300个周期，那么大概需要40个warp同时执行才能隐藏latency。
 
     Another reason a warp is not ready to execute its next instruction is that it is waiting at some memory fence (Memory Fence Functions) or synchronization point (Memory Fence Functions). A synchronization point can force the multiprocessor to idle as more and more warps wait for other warps in the same block to complete execution of instructions prior to the synchronization point. Having multiple resident blocks per multiprocessor can help reduce idling in this case, as warps from different blocks do not need to wait for each other at synchronization points.
 warp没有准备好执行下一条指令的另一个原因是，它是等待某个memory fence（Memory Fence Functions）或同步操作（Memory Synchronization Functions）。同步操作会强制multiprocessor空闲，因为同一个block内的warp必须在同步点等待直到所有warp都执行到同步点。在这种情况下，在一个multiprocessor内执行多个block有利于减少空闲，因为同步操作仅在block内有效。
 
     The number of blocks and warps residing on each multiprocessor for a given kernel call depends on the execution configuration of the call (Execution Configuration), the memory resources of the multiprocessor, and the resource requirements of the kernel as described in Hardware Multithreading. Register and shared memory usage are reported by the compiler when compiling with the -ptxas-options=-v option.
-对于给定的kernel，每一个multiprocessor内block和warp数量是由三个因素决定的，分别是调用时执行配置（见执行配置章节，就是调用核函数时的四个参数），multiprocessor的内存资源以及kernel的资源需求（即kernel内所使用的寄存器和共享内存等资源，见硬件多线程中描述）。 当使用-ptxas-options = -v选项进行编译时，编译器会报告寄存器和共享内存使用情况。
+对于给定的kernel，每一个multiprocessor内block和warp数量是由三个因素决定的，分别是调用时执行配置（见执行配置章节，就是调用核函数时的四个参数），multiprocessor的内存资源以及kernel的资源需求（即kernel内所使用的寄存器和共享内存等资源，见硬件多线程中描述）。 当使用-ptxas-options = -v选项进行编译时，编译器会打印出寄存器和共享内存使用情况。
 
     The total amount of shared memory required for a block is equal to the sum of the amount of statically allocated shared memory and the amount of dynamically allocated shared memory.
 一个block所需的共享内存总量等于静态分配的共享内存量与动态分配的共享内存量的总和（注：共享内存有静态和动态两种分配方式，详见https://devblogs.nvidia.com/using-shared-memory-cuda-cc/）。
-------------
 
     The number of registers used by a kernel can have a significant impact on the number of resident warps. For example, for devices of compute capability 6.x, if a kernel uses 64 registers and each block has 512 threads and requires very little shared memory, then two blocks (i.e., 32 warps) can reside on the multiprocessor since they require 2x512x64 registers, which exactly matches the number of registers available on the multiprocessor. But as soon as the kernel uses one more register, only one block (i.e., 16 warps) can be resident since two blocks would require 2x512x65 registers, which are more registers than are available on the multiprocessor. Therefore, the compiler attempts to minimize register usage while keeping register spilling (see Device Memory Accesses) and the number of instructions to a minimum. Register usage can be controlled using the maxrregcount compiler option or launch bounds as described in Launch Bounds.
-kernel中每个线程使用的寄存器数量会对活跃warp的数量产生重大影响。 例如，对于计算能力6.x的设备，如果每个thread使用64个寄存器并且每个block有512个线程（假设只需要很少的共享内存，即共享内存不会造成限制），则一个 multiprocessor 同时只能执行两个block（即32个warp），因为它们需要2x512x64寄存器，与multiprocessor上可用的寄存器数量完全一致。 这种情况下，如果一个thread哪怕多使用一个寄存器，那么只能执行一个block（即16个warp），因为两个block需要2×512×65个寄存器，多于multiprocessor上可用的寄存器数量。 因此，编译器会尝试编译优化，尽量减少寄存器使用量，同时尽可能的降低寄存器溢出（请参阅“设备内存访问”）和指令数量。开发者可以使用maxrregcount编译器选项或launch bounds来控制寄存器的使用量，如Launch Bounds章节中所述。
+kernel中每个线程使用的寄存器数量对活跃warp的数量有重大影响。 例如，对于计算能力6.x的设备，如果每个thread使用64个寄存器并且每个block有512个线程（假设只需要很少的共享内存，即共享内存不会造成限制），则一个 multiprocessor 同时只能执行两个block（即32个warp），因为它们需要2x512x64寄存器，与multiprocessor上可用的寄存器数量完全一致。 这种情况下，如果一个thread哪怕多使用一个寄存器，那么只能执行一个block（即16个warp），因为两个block需要2×512×65个寄存器，多于multiprocessor上可用的寄存器数量。 ** 因此，编译器会尝试编译优化，尽量减少寄存器使用量，同时尽可能的降低寄存器溢出（请参阅“设备内存访问”）和指令数量。** 开发者可以使用maxrregcount编译器选项或launch bounds来控制寄存器的使用量，如Launch Bounds章节中所述。
 
     Each double variable and each long long variable uses two registers.
 每个double和long long类型占用两个寄存器。
 
     The effect of execution configuration on performance for a given kernel call generally depends on the kernel code. Experimentation is therefore recommended. Applications can also parameterize execution configurations based on register file size and shared memory size, which depends on the compute capability of the device, as well as on the number of multiprocessors and memory bandwidth of the device, all of which can be queried using the runtime (see reference manual).
 
-执行配置对于给定kernel的性能影响通常取决于kernel代码。因此建议进行实验从而在当前设备上获得最佳性能（注：比如实验不同block大小下kernel的性能）。核函数的最佳运行配置是跟设备有关的，开发者也可以根据寄存器数量和共享内存大小来修改执行配置，设备的寄存器数量，共享内存大小，设备的计算能力，multiprocessors的数量以及内存带宽，所有的这些参数都可以手册中查到。
+执行配置对于给定kernel的性能影响通常取决于kernel代码。因此建议进行实验从而在当前设备上获得最佳性能（注：比如实验不同block大小下kernel的性能）。核函数的最佳运行配置是跟设备有关的，开发者可以根据寄存器数量和共享内存大小来修改执行配置，设备的寄存器数量，共享内存大小，设备的计算能力，multiprocessors的数量以及内存带宽，所有的这些参数都可以手册中查到。
 
     The number of threads per block should be chosen as a multiple of the warp size to avoid wasting computing resources with under-populated warps as much as possible.
-应该选择每块的线程数作为warp大小的倍数，以避免尽可能多地浪费具有填充不足的warp的计算资源。
 在设置执行配置时，block大小应该尽量为warp的倍数，否则会生成一些空闲thread来对齐，造成计算资源浪费。注：GPU内的最小执行单元是warp，如果设置block大小为20，那么实际运行中，会生成12个空闲thread补齐一个warp来执行。
 
 5.2.3.1. Occupancy Calculator
 
     Several API functions exist to assist programmers in choosing thread block size based on register and shared memory requirements.
-有几个API函数可以帮助程序员根据kernel内寄存器和共享内存的需求来选择线程块大小。
+有几个API函数可以帮助程序员根据kernel内寄存器和共享内存的使用量计算出最优线程块大小。
 
     The occupancy calculator API, cudaOccupancyMaxActiveBlocksPerMultiprocessor, can provide an occupancy prediction based on the block size and shared memory usage of a kernel. This function reports occupancy in terms of the number of concurrent thread blocks per multiprocessor.
     
-Occupancy Calculator API， cudaOccupancyMaxActiveBlocksPerMultiprocessor，可以根据kernel的块大小和共享内存使用情况来预测设备占用率（occupancy）。该函数根据每个multiprocessor的并发线程块数计算出占有率情况。
+Occupancy Calculator API， cudaOccupancyMaxActiveBlocksPerMultiprocessor，可以根据kernel的block大小、共享内存使用情况和每个multiprocessor内的资源量计算出每个multiprocessor内可并发block数目，然后再计算出设备占用率（occupancy）。
 
     Note that this value can be converted to other metrics. Multiplying by the number of warps per block yields the number of concurrent warps per multiprocessor; further dividing concurrent warps by max warps per multiprocessor gives the occupancy as a percentage.
     
-    值得注意的是，占有率可以转换为其他指标。占有率乘以block内warp数量会得到每个multiprocessor的并发warp数量;并发warp数量除以每个多处理器的最大warp数可以得到占有率的百分比形式。
+    值得注意的是，占用率可以转换为其他指标。占用率乘以block内warp数量会得到每个multiprocessor的并发warp数量;并发warp数量除以每个多处理器的最大warp数可以得到占有率的百分比形式。
     
     The occupancy-based launch configurator APIs, cudaOccupancyMaxPotentialBlockSize and cudaOccupancyMaxPotentialBlockSizeVariableSMem, heuristically calculate an execution configuration that achieves the maximum multiprocessor-level occupancy.
     
-API cudaOccupancyMaxPotentialBlockSize和cudaOccupancyMaxPotentialBlockSizeVariableSMem 能够启发式地计算出一个执行配置，实现最大 multiprocessor 占用率。
+API cudaOccupancyMaxPotentialBlockSize和cudaOccupancyMaxPotentialBlockSizeVariableSMem 能够启发式地计算出最优执行配置，实现最大 multiprocessor 占用率。
 
     The following code sample calculates the occupancy of MyKernel. It then reports the occupancy level with the ratio between concurrent warps versus maximum warps per multiprocessor.
 
@@ -174,7 +172,7 @@ int main()
 }
 ```
     The following code sample configures an occupancy-based kernel launch of MyKernel according to the user input.
-以下代码示例，根据输入数据大小，基于占有率计算出运行配置，并运行kernel。
+以下代码示例，根据输入数据大小，使用占用率API计算出运行配置，并运行kernel。
 ```c++
 // Device code
 __global__ void MyKernel(int *array, int arrayCount)
@@ -215,20 +213,18 @@ int launchMyKernel(int *array, int arrayCount)
 }
 ```
     The CUDA Toolkit also provides a self-documenting, standalone occupancy calculator and launch configurator implementation in <CUDA_Toolkit_Path>/include/cuda_occupancy.h for any use cases that cannot depend on the CUDA software stack. A spreadsheet version of the occupancy calculator is also provided. The spreadsheet version is particularly useful as a learning tool that visualizes the impact of changes to the parameters that affect occupancy (block size, registers per thread, and shared memory per thread).
-对于不能直接使用CUDA软件环境的程序，CUDA Toolkit提供了独立的自带文档的占用率计算器和启用配置器，目录为 <CUDA_Toolkit_Path>/include/cuda_occupancy.h。 还提供了电子表格版本的占用率计算器。 电子表格版本作为一种学习工具特别有用，它可以可视化一些参数变化对占用率的影响，包括block大小，每个线程的寄存器使用量和共享内存使用量。
+对于不能直接使用CUDA软件环境的程序，CUDA Toolkit提供了独立的自带文档的占用率计算器和启用配置器，目录为 <CUDA_Toolkit_Path>/include/cuda_occupancy.h。 还提供了电子表格版本的占用率计算器。 电子表格版本是一个有效的学习工具，它可以可视化一些参数变化对占用率的影响，包括block大小，每个线程的寄存器使用量和共享内存使用量等。
 
 5.3. Maximize Memory Throughput
     The first step in maximizing overall memory throughput for the application is to minimize data transfers with low bandwidth.
-
     That means minimizing data transfers between the host and the device, as detailed in Data Transfer between Host and Device, since these have much lower bandwidth than data transfers between global memory and the device    .
-
     That also means minimizing data transfers between global memory and the device by maximizing use of on-chip memory: shared memory and caches (i.e., L1 cache and L2 cache available on devices of compute capability 2.x and higher, texture cache and constant cache available on all devices).
 
-应用程序最大化整体内存吞吐量的第一步是，尽可能的减少低带宽的数据传输。换句话说就是要最大限度地减少主机和设备之间的数据传输，详见主机和设备之间的数据传输章节，因为主机和设备之间带宽远远低于全局内存和设备之间的数据传输带宽。最大限度地减少主机和设备之间的数据传输，也就是要尽可能的使用片上（on-chip）内存，即共享内存和cache，所有的设备都有纹理cache和常量cache，计算能力大于等于2.x的设备上有L1 和 L2 cache。
+应用程序最大化整体内存吞吐量的首要步骤是，尽可能的减少低带宽的数据传输。换句话说就是要最大限度地减少主机和设备之间的数据传输，详见主机和设备之间的数据传输章节，因为主机和设备之间带宽非常低，远远低于全局内存的数据传输带宽。在设计CUDA应用程序时，要尽可能的使用片上（on-chip）内存，即共享内存和cache，最大限度地减少主机和设备之间的数据传输，所有的GPU都有纹理cache和常量cache，计算能力大于等于2.x的设备上有L1 和 L2 cache。
+
     Shared memory is equivalent to a user-managed cache: The application explicitly allocates and accesses it. As illustrated in CUDA C Runtime, a typical programming pattern is to stage data coming from device memory into shared memory; in other words, to have each thread of a block:
 
-
-共享内存可以理解为用户可以管理的cache（注：共享内存和L1 cache使用同一块硬件）：应用程序显式分配并访问它。 如CUDA C运行时所示，典型的编程模式是将全局内存的数据放入共享内存; 换句话说，block的每个thread的流程如下：
+共享内存可以理解为用户可以管理的L1 cache（注：共享内存和L1 cache使用同一块硬件）：应用程序需要显式分配并访问共享内存。 如CUDA C Runtime章节所示，典型的共享内存使用模式是将全局内存的数据放入共享内存; 换句话说，每个thread内的流程如下：
 
     Load data from device memory to shared memory,
 
@@ -243,34 +239,33 @@ int launchMyKernel(int *array, int arrayCount)
  1. 将全局内存加载到共享内存；
  2. 在block内进行同步操作，以保证每一个thread可以安全的读取共享内存；
  3. 计算；
- 4. 进行同步操作，如果需要。要确保共享内存已更新结果；
- 5. 将结果写会全局内存；
+ 4. 进行必要的同步操作。要确保共享内存已更新结果；
+ 5. 将结果写回全局内存；
 
     For some applications (e.g., for which global memory access patterns are data-dependent), a traditional hardware-managed cache is more appropriate to exploit data locality. As mentioned in Compute Capability 3.x and Compute Capability 7.x, for devices of compute capability 3.x and 7.x, the same on-chip memory is used for both L1 and shared memory, and how much of it is dedicated to L1 versus shared memory is configurable for each kernel call.
 
-而常规的cache是由硬件管理的。对于某些访存密集型应用，这类cache更适合于利用数据局部性。正如Compute Capability 3.x和Compute Capability 7.x中所述，对于计算能力3.x和7.x的设备，L1 cache和共享内存使用相同的片上存储器，执行每一个kernel之前，可以使用相关API配置 L1 cache和共享内存的大小。
+而常规的cache是由硬件管理的。对于某些访存密集型应用，这类cache能够更好地利用数据局部性。正如Compute Capability 3.x和Compute Capability 7.x中所述，对于计算能力3.x和7.x的设备，L1 cache和共享内存使用相同的片上存储器，执行每一个kernel之前，可以使用相关API配置 L1 cache和共享内存的大小。
     
     The throughput of memory accesses by a kernel can vary by an order of magnitude depending on access pattern for each type of memory. The next step in maximizing memory throughput is therefore to organize memory accesses as optimally as possible based on the optimal memory access patterns described in Device Memory Accesses. This optimization is especially important for global memory accesses as global memory bandwidth is low, so non-optimal global memory accesses have a higher impact on performance.
 
-**内核对内存访问的吞吐量可能会根据每种内存类型的访问模式而变化一个数量级。因此，最大化内存吞吐量的下一步是根据设备内存访问中描述的最佳内存访问模式尽可能优化组织内存访问。由于全局内存带宽较低，因此此优化对全局内存访问尤为重要，因此非最优全局内存访问对性能影响较大。**
+不同内存的访存模式对kernel的访存吞吐量有非常大的影响。因此最大化内存吞吐量的第二步就是根据每种内存的最佳访存模式来设计kernel的内存访存模式。全局内存带宽最低，因此优化对全局内存访问模式往往能取得明显的性能提升。
 
 5.3.1. Data Transfer between Host and Device
 
     Applications should strive to minimize data transfer between the host and the device. One way to accomplish this is to move more code from the host to the device, even if that means running kernels with low parallelism computations. Intermediate data structures may be created in device memory, operated on by the device, and destroyed without ever being mapped by the host or copied to host memory.
-应用程序应尽量减少主机和设备之间的数据传输。 实现此目的的一种方法是将更多的运算任务从主机端移动到设备端，即使有可能降低kernel的并行性。
-产生的中间数据最好存放在设备端内存中，并避免拷贝到主机端内存中。
+应用程序应尽量减少主机和设备之间的数据传输。 实现此目的的一种方法是将更多的运算任务从主机端移动到设备端，甚至可以为此牺牲kernel的并行性。这种情况下，计算步骤产生的中间数据一般存放在设备端内存中，可以有效地避免拷贝到主机端内存中。
 
     Also, because of the overhead associated with each transfer, batching many small transfers into a single large transfer always performs better than making each transfer separately.
 
-每次内存传输会有一些额外的开销，因此将多个内存传输合并成一次大内存传输会获得一定的性能提升。
+每次内存传输会有一些额外的开销，因此将多个小内存传输合并成一次大内存传输会获得一定的性能提升。
 
     On systems with a front-side bus, higher performance for data transfers between host and device is achieved by using page-locked host memory as described in Page-Locked Host Memory.
 
-在具有前端总线的系统上，页锁定内存与设备端内存的传输性能高于主机内存与设备内存之间的传输性能，详细见Page-Locked Host Memory章节。
+在具有前端总线的系统上，与主机内存相比，使用页锁定内存与设备端内存的传输性能更优，详细见Page-Locked Host Memory章节。
 
     In addition, when using mapped page-locked memory (Mapped Memory), there is no need to allocate any device memory and explicitly copy data between device and host memory. Data transfers are implicitly performed each time the kernel accesses the mapped memory. For maximum performance, these memory accesses must be coalesced as with accesses to global memory (see Device Memory Accesses). Assuming that they are and that the mapped memory is read or written only once, using mapped page-locked memory instead of explicit copies between device and host memory can be a win for performance.
     
-此外，在使用映射页面锁定内存（映射内存）时，不需要手动申请设备内存和显式地调用cudaMemcpy函数在主机和设备之间复制数据。当在kernel中访问Mapped Memory时，会隐式地进行数据传输。 为获得最佳性能，像访问全局内存一样，这些内存访问会被合并（请参阅Device Memory Accesses章节）。 假设内存访问被合并，且Mapped Memory仅被读取或写入一次，这种情况下，使用映射的页面锁定内存的性能优于显式地主机和设备之间数据拷贝。
+此外，在使用映射页面锁定内存（映射内存）时，不需要手动申请设备内存和显式地调用API函数在主机和设备之间传输数据。当在kernel中访问Mapped Memory时，会隐式地进行数据传输。 为获得最佳性能，像访问全局内存一样，这些内存访问会被合并（请参阅Device Memory Accesses章节）。 假设内存访问被合并，且Mapped Memory仅被读取或写入一次，这种情况下，使用映射的页面锁定内存的性能优于显式地主机和设备之间数据传输。
 
     On integrated systems where device memory and host memory are physically the same, any copy between host and device memory is superfluous and mapped page-locked memory should be used instead. Applications may query a device is integrated by checking that the integrated device property (see Device Enumeration) is equal to 1.
     
@@ -279,27 +274,26 @@ int launchMyKernel(int *array, int arrayCount)
     5.3.2. Device Memory Accesses
     An instruction that accesses addressable memory (i.e., global, local, shared, constant, or texture memory) might need to be re-issued multiple times depending on the distribution of the memory addresses across the threads within the warp. How the distribution affects the instruction throughput this way is specific to each type of memory and described in the following sections. For example, for global memory, as a general rule, the more scattered the addresses are, the more reduced the throughput is.
 
-一个warp内的所有线程同一时刻执行相同的指令。一条访问可寻址存储器（即，全局内存，本地内存，共享内存，常量内存或纹理内存）的指令可能会被发射多次，这取决于warp内线程所需数据在存储器中的地址是如何分布的。
-在下面各小节中，将介绍对于每种内存，不同的分布对指令吞吐量的影响。举个例子，对于全局内存，一般来讲，一个warp内线程所需数据的地址越分散，吞吐量越低。
+一个warp内的所有活跃线程同一时刻执行相同的指令。一条访问可寻址存储器（即，全局内存，本地内存，共享内存，常量内存或纹理内存）的指令可能会被发射多次，这取决于warp内线程所访问数据在存储器中的地址是如何分布的。
+在下面各小节中，将介绍对于每种内存，不同的分布对指令吞吐量的影响。举个例子，对于全局内存，一般来讲，一个warp内线程所访存数据的地址越分散，吞吐量越低。
 
     Global Memory
 全局内存
 
     Global memory resides in device memory and device memory is accessed via 32-, 64-, or 128-byte memory transactions. These memory transactions must be naturally aligned: Only the 32-, 64-, or 128-byte segments of device memory that are aligned to their size (i.e., whose first address is a multiple of their size) can be read or written by memory transactions.
 
-全局内存位于设备内存中，设备内存的每次内存事务的大小必须是32,64或128字节。内存事务必须对齐，即
-只有大小为32,64或128字节且首地址是其大小倍数的设备内存段才可以进行内存读取或写入事务。
+全局内存位于设备内存中，设备内存的每次内存事务的大小必须是32,64或128字节。内存事务必须对齐，即只有大小为32,64或128字节且首地址是其大小倍数的设备内存段才可以进行内存访问。
 
     When a warp executes an instruction that accesses global memory, it coalesces the memory accesses of the threads within the warp into one or more of these memory transactions depending on the size of the word accessed by each thread and the distribution of the memory addresses across the threads. In general, the more transactions are necessary, the more unused words are transferred in addition to the words accessed by the threads, reducing the instruction throughput accordingly. For example, if a 32-byte memory transaction is generated for each thread's 4-byte access, throughput is divided by 8.
 
-当一个warp执行访问全局内存的指令时，32个线程会发射出32条访问内存指令，合并访问操作即将这32条访存指令合并成一条或者多条，具体取决于每个线程访问数据的大小以及所访问数据的地址分布。一般来说，合并后的内存事务越多，传输的冗余数据越多（传输的数据大小大于warp所需要的数据大小），指令吞吐量就越低。举个例子，如果每个线程只需要访问4字节的数据，但却产生了32字节的内存事务，那么吞吐量为1/8.
+当一个warp执行访问全局内存的指令时，32个线程会发射出32条访问内存指令，合并访问操作会将这32条访存指令合并成一条或者多条，具体取决于每个线程访问数据的大小以及所访问数据的地址分布。一般来说，合并后的内存事务越多，传输的冗余数据越多（传输的数据大小大于warp所需要的数据大小），指令吞吐量就越低。举个例子，如果每个线程只需要访问4字节的数据，但却产生了32字节的内存事务，那么吞吐量为1/8.
 
     How many transactions are necessary and how much throughput is ultimately affected varies with the compute capability of the device. Compute Capability 3.x, Compute Capability 5.x, Compute Capability 6.x and Compute Capability 7.x give more details on how global memory accesses are handled for various compute capabilities.
 
 具体的合并结果以及对吞吐量的影响取决于设备的计算能力。 在计算能力3.x，计算能力5.x，计算能力6.x和计算能力7.x章节里分别详细介绍了，在不同计算能力下是如何处理各种全局内存访问情况的。
 
     To maximize global memory throughput, it is therefore important to maximize coalescing by:
-为了最大限度地提高全局内存吞吐量，重要的是通过以下措
+通过以下措施可以有效的提高内存合并访问，从而最大限度地提高全局内存吞吐量。
 
  - Following the most optimal access patterns based on Compute
    Capability 3.x, Compute Capability 5.x, Compute Capability 6.x and
@@ -318,11 +312,11 @@ Size and Alignment Requirement
 
     Global memory instructions support reading or writing words of size equal to 1, 2, 4, 8, or 16 bytes. Any access (via a variable or a pointer) to data residing in global memory compiles to a single global memory instruction if and only if the size of the data type is 1, 2, 4, 8, or 16 bytes and the data is naturally aligned (i.e., its address is a multiple of that size).
 
-全局存储器指令支持读取或写入大小等于1,2,4,8或16字节的数据。 当且仅当数据类型的大小是1,2,4,8或16字节且数据的地址是其大小的倍数时，对全局存储器中的数据通过变量或指针访问时，访问指令会被合并成一条全局内存访问指令。
+全局存储器指令支持读取或写入1,2,4,8或16字节的数据。当且仅当所访问数据数据类型的大小是1,2,4,8或16字节且数据的地址是其大小的倍数时，该内存访问才会被编译成一条全局内存访问指令。
 
     If this size and alignment requirement is not fulfilled, the access compiles to multiple instructions with interleaved access patterns that prevent these instructions from fully coalescing. It is therefore recommended to use types that meet this requirement for data that resides in global memory.
 
-如果此大小和对齐要求未满足，则访问将编译为具有交叉存取模式的多条指令，以防止这些指令完全合并。 因此，建议使用满足此要求的类型来存储全局内存中的数据。
+如果此大小和对齐要求未满足，则访问将编译为具有交叉存取模式的多条指令，以防止这些指令完全合并。 因此，建议使用满足要求的类型来存储全局内存中的数据。
 
     The alignment requirement is automatically fulfilled for the built-in types of char, short, int, long, longlong, float, double like float2 or float4.
     
@@ -344,11 +338,11 @@ struct __align__(16) {
 };
     Any address of a variable residing in global memory or returned by one of the memory allocation routines from the driver or runtime API is always aligned to at least 256 bytes.
 
-全局内存中变量的地址和由驱动API或者运行API分配内存的地址，都是对齐至少256个字节。
+由驱动API或者运行API分配的内存的地址，都是对齐至少256个字节。
 
     Reading non-naturally aligned 8-byte or 16-byte words produces incorrect results (off by a few words), so special care must be taken to maintain alignment of the starting address of any value or array of values of these types. A typical case where this might be easily overlooked is when using some custom global memory allocation scheme, whereby the allocations of multiple arrays (with multiple calls to cudaMalloc() or cuMemAlloc()) is replaced by the allocation of a single large block of memory partitioned into multiple arrays, in which case the starting address of each array is offset from the block's starting address.
 
-读取非自然对齐的8字节或16字节字会产生不正确的结果，因此在为变量或者数据分配空间时，一定要注意保持起始地址的对齐。在自定义的全局内存分配方案中，这个问题很容易被忽略。自定义全局内存分配分案就是先申请一大块全局内存，然后通过地址偏移的方式为变量或者数组分配空间，优点是减少多次申请全局内存造成的额外开销。
+读取非自然对齐的8字节或16字节字会产生不正确的结果，因此在为变量或者数组分配空间时，一定要注意保证起始地址的对齐。在自定义的全局内存分配方案中，这个问题很容易被忽略。自定义全局内存分配分案就是先申请一大块全局内存，然后通过地址偏移的方式为变量或者数组分配空间，优点是减少多次申请全局内存造成的额外开销。（详见我的博客）
 
 Two-Dimensional Arrays
 二维数组
@@ -357,15 +351,14 @@ Two-Dimensional Arrays
 
     BaseAddress + width * ty + tx
 
-经典的全局内存访问模式是根据每个线程的坐标ID（tx，ty）访问二维数据中的对应的数据，假设二维数组的首地址为BaseAddress，宽度为width，则代码为：BaseAddress +width* ty + tx
+全局内存内二维数组的访问模式是根据每个线程的坐标ID（tx，ty）访问二维数据中的对应的数据，假设二维数组的首地址为BaseAddress，宽度为width，则代码为：BaseAddress +width* ty + tx
 
     For these accesses to be fully coalesced, both the width of the thread block and the width of the array must be a multiple of the warp size.
-为了使内存访问完全合并，线程块的宽度和数组的宽度必须是warp大小的倍数。
+为了使内存访问完全合并，block的宽度和数组的宽度必须是warp大小的倍数。
 
     In particular, this means that an array whose width is not a multiple of this size will be accessed much more efficiently if it is actually allocated with a width rounded up to the closest multiple of this size and its rows padded accordingly. The cudaMallocPitch() and cuMemAllocPitch() functions and associated memory copy functions described in the reference manual enable programmers to write non-hardware-dependent code to allocate arrays that conform to these constraints.
 
-特殊情况，如果数组的宽度不是warp大小的倍数，那么将数组的宽度向上补齐为warp的倍数，能够有效的提高访存效率。这正是cudaMallocPitch（）和cuMemAllocPitch（） API和对应的复制API的功能，这些API
-使程序员能够不编写硬件相关的代码的情况下，实现申请分配满足这些约束的空间。
+特殊情况，如果数组的宽度不是warp大小的倍数，那么将数组的宽度向上补齐为warp的倍数，能够有效的提高访存效率。这正是cudaMallocPitch（）和cuMemAllocPitch（） API和对应的复制API的功能，这些API使程序员能够不编写硬件相关的代码的情况下，实现申请分配满足这些约束的数据空间。
 
 Local Memory
 本地内存
@@ -375,14 +368,14 @@ Local Memory
  - Arrays for which it cannot determine that they are indexed with constant quantities, 
  - Large structures or arrays that would consume too much register space, 
  - Any variable if the kernel uses more registers than available (this is also known as register spilling).
-**本地内存访问只对一些自动变量发生**，如Variable Memory Space Specifiers章节中所述。编译器可能将以下三种情况的数据放到本地内存中：
+只有一些自动变量会被存放到本地内存，见Variable Memory Space Specifiers章节中所述。编译器可能将以下三种情况的数据放到本地内存中：
  - kernel中动态申请的数组，即在编译时无法确定申请大小的数组， 
  - 会消耗太多的寄存器空间大型结构体或数组，
- - 寄存器溢出，即寄存器已经被之前的数据用完。
+ - 寄存器溢出，即寄存器已经被用完。
 
     Inspection of the PTX assembly code (obtained by compiling with the -ptx or-keep option) will tell if a variable has been placed in local memory during the first compilation phases as it will be declared using the .local mnemonic and accessed using the ld.local and st.local mnemonics. Even if it has not, subsequent compilation phases might still decide otherwise though if they find it consumes too much register space for the targeted architecture: Inspection of the cubin object using cuobjdump will tell if this is the case. Also, the compiler reports total local memory usage per kernel (lmem) when compiling with the --ptxas-options=-v option. Note that some mathematical functions have implementation paths that might access local memory.
 
-查看PTX汇编代码（使用-ptx或-keep编译选项编译时可以获得kernel的PTX代码），可以看到在编译第一阶段，满足以上条件的变量被放到了本地内存中。被放到本地内存的变量的声明会标记.local符号，访问会标记ld.local 和 st.local符号。对于没有被放入本地内存的变量，但消耗了太多了寄存器，在后续的编译阶段中会被放到本地内存中，使用cuobjdump命令查看cubin文件可以看到是否有这种情况发生。。此外，当使用--ptxas-options = -v选项进行编译时，编译器会报告每个内核的本地内存使用情况（lmem）。请注意，一些数学函数的具体实现过程可能会访问本地内存。
+查看PTX汇编代码（使用-ptx或-keep编译选项编译时可以获得kernel的PTX代码），可以看到在编译第一阶段，满足以上条件的变量被放到了本地内存中。被放到本地内存的变量的声明会标记.local符号，访问会标记ld.local 和 st.local符号。对于没有被放入本地内存的变量，但消耗了太多了寄存器，在后续的编译阶段中也可能会被放到本地内存中，使用cuobjdump命令查看cubin文件可以看到是否有这种情况发生。此外，当使用--ptxas-options = -v选项进行编译时，编译器会报告每个内核的本地内存使用情况（lmem）。请注意，一些数学函数的具体实现过程可能会访问本地内存。
 
     The local memory space resides in device memory, so local memory accesses have same high latency and low bandwidth as global memory accesses and are subject to the same requirements for memory coalescing as described in Device Memory Accesses. Local memory is however organized such that consecutive 32-bit words are accessed by consecutive thread IDs. Accesses are therefore fully coalesced as long as all threads in a warp access the same relative address (e.g., same index in an array variable, same member in a structure variable).
 
@@ -413,7 +406,6 @@ Shared Memory
 
 To get maximum performance, it is therefore important to understand how memory addresses map to memory banks in order to schedule the memory requests so as to minimize bank conflicts. This is described in Compute Capability 3.x, Compute Capability 5.x, Compute Capability 6.x, and Compute Capability 7.x for devices of compute capability 3.x, 5.x, 6.x and 7.x, respectively.
 
-
 为了获得最佳性能，必须了解内存地址是如何映射到共享内存bank上的，从而有效地设计访存模式，以最小化bank conflict。
 
 Constant Memory
@@ -432,7 +424,7 @@ The resulting requests are then serviced at the throughput of the constant cache
 Texture and Surface Memory
     The texture and surface memory spaces reside in device memory and are cached in texture cache, so a texture fetch or surface read costs one memory read from device memory only on a cache miss, otherwise it just costs one read from texture cache. The texture cache is optimized for 2D spatial locality, so threads of the same warp that read texture or surface addresses that are close together in 2D will achieve best performance. Also, it is designed for streaming fetches with a constant latency; a cache hit reduces DRAM bandwidth demand but not fetch latency.
 
-texture Memory和surface Memory位于设备内存中，并有对应的texture cache。texture cache针对2D空间局部性进行了优化，所以当warp内的线程读取texture Memory或surface Memory时，如果访存地址在2D空间上越接近，则性能越好。
+texture Memory和surface Memory位于设备内存中，并有对应的texture cache。texture cache针对2D空间局部性进行了优化，所以当warp内的线程读取texture Memory或surface Memory时，如果访存地址在二维坐标空间上越接近，则性能越好。
 **此外，它设计用于具有恒定延迟的流式抓取;高速缓存命中减少了DRAM带宽需求，但不能提取等待时间。**
 
 Reading device memory through texture or surface fetching present some benefits that can make it an advantageous alternative to reading device memory from global or constant memory:
@@ -447,5 +439,5 @@ texture Memory或surface Memory的一些特性，使其在某些场景下，性�
  - 如果内存读取不满足全局内存或常量内存的最佳访存规则，且具有一定的局部性，那么使用texture Memory或surface Memory会获得更佳的性能。
  -  texture Memory和surface Memory的寻址计算kernel之外由专用单元执行;
  -  **打包数据可以在单个操作中广播以分离变量;**
- -  8-bit和16-bit的整型数据，可以选择性的[0.0，1.0]或[-1.0,1.0]范围内的32位浮点值（请参阅Texture Memory）
+ -  8-bit和16-bit的整型数据，可以选择性的转化为[0.0，1.0]或[-1.0,1.0]范围内的32位浮点值（请参阅Texture Memory）
 
