@@ -7,7 +7,7 @@
 
 [TOC]
 
-# 加粗内容为翻译不太准确的部分，需要仔细斟酌
+# 正文中加粗内容为翻译不太准确的部分，需要仔细斟酌
 
 ## 5.1. Overall Performance Optimization Strategies
 ## 5.1 性能优化策略概要
