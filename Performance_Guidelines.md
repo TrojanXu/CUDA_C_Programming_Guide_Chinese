@@ -424,7 +424,7 @@ texture Memory或surface Memory的一些特性，使其在某些场景下，性�
 
  - 如果内存读取不满足全局内存或常量内存的最佳访存规则，且具有一定的局部性，那么使用texture Memory或surface Memory会获得更佳的性能。
  -  texture Memory和surface Memory的寻址计算kernel之外由专用单元执行;
- -  ** 压缩过的数据可以在一次操作中广播到其他变量中。**
+ -  **压缩过的数据可以在一次操作中广播到其他变量中。**
  -  8-bit和16-bit的整型数据，可以选择性的转化为[0.0，1.0]或[-1.0,1.0]范围内的32位浮点值（请参阅Texture Memory）
 
 
