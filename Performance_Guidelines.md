@@ -1,12 +1,14 @@
 # 5. Performance Guidelines
-性能优化指南
+# 5. 性能优化指南
 
 标签（空格分隔）： CUDA
 
 ---
 
+[TOC]
+
 ## 5.1. Overall Performance Optimization Strategies
-## 5.1 整体性能优化策略
+## 5.1 性能优化策略概要
 
 
 ----------
@@ -72,21 +74,20 @@ CUDA性能优化围绕三个基本策略展开：
 
 如硬件多线程章节中所述，最大化 GPU multiprocessor各个功能单元的利用率，需要尽可能的最大化线程并行度。也就是说，利用率与执行状态warp的数量有直接关系。在每个指令发射周期，一个warp调度器选择一个处于准备状态的warp（如果有的话）执行其下一条指令，然后发射指令给该warp中的活跃线程。延迟（latency）即一个warp准备好执行下一条指令所花费的时钟周期数。实现充分利用资源，需要在每个时钟周期内，都有一些指令经过warp调度器发射给warp执行，不存在空闲时钟周期，换句话说，就是latency被完全隐藏了。
 
-The number of instructions required to hide a latency of L clock cycles depends on the respective throughputs of these instructions (see Arithmetic Instructions for the throughputs of various arithmetic instructions). Assuming maximum throughput for all instructions, it is: 8L for devices of compute capability 3.x since a multiprocessor issues a pair of instructions per warp over one clock cycle for four warps at a time, as mentioned in Compute Capability 3.x.
+    The number of instructions required to hide a latency of L clock cycles depends on the respective throughputs of these instructions (see Arithmetic Instructions for the throughputs of various arithmetic instructions). Assuming maximum throughput for all instructions, it is: 8L for devices of compute capability 3.x since a multiprocessor issues a pair of instructions per warp over one clock cycle for four warps at a time, as mentioned in Compute Capability 3.x.
 完全隐藏长度为L时钟周期的latency所需要的指令数目取决于各指令的吞吐量（即指令执行所需要的时钟周期）（请参阅Arithmetic Instructions以了解各种算术指令的吞吐量）。在计算能力3.x的设备上，假设所有指令的吞吐量都是最大（8时钟周期），那么就需要在一个时钟周期内向4个warp发射*两条*指令，才能隐藏latency（如计算能力3.x章节中所述）。
 
     For devices of compute capability 3.x, the eight instructions issued every cycle are four pairs for four different warps, each pair being for the same warp.
 
 对于计算能力为3.x的设备，每个周期向4个不同的warp发射8条指令，即一个warp 2条。
+    
     The most common reason a warp is not ready to execute its next instruction is that the instruction's input operands are not available yet.
     
 一个warp没有准备好执行下一条指令的最常见原因是指令的输入操作数还未到位。
 
     If all input operands are registers, latency is caused by register dependencies, i.e., some of the input operands are written by some previous instruction(s) whose execution has not completed yet. In the case of a back-to-back register dependency (i.e., some input operand is written by the previous instruction), the latency is equal to the execution time of the previous instruction and the warp schedulers must schedule instructions for different warps during that time. Execution time varies depending on the instruction, but it is typically about 11 clock cycles for devices of compute capability 3.x, which translates to 44 warps for devices of compute capability 3.x (assuming that warps execute instructions with maximum throughput, otherwise fewer warps are needed). This is also assuming enough instruction-level parallelism so that schedulers are always able to issue pairs of instructions for each warp.
 
-举例说明，如果指令I的输入操作数都位于寄存器，那么latency由寄存器是否依赖其他指令决定的，通俗来说，就是一些输入操作数是前一条指令的结果数，这种情况下，指令I的latency等于前一条指令的执行时间，在这期间，该warp处于空闲（idle）状态，warp调度器必须为其他warp调度指令。执行时间因指令而异，但对于计算能力3.x的设备而言，通常约为11个时钟周期，即需要44个warp同时执行才能完全隐藏延迟（这里假设warp执行每一条指令的时间都是11时钟周期）。
-
-**This is also assuming enough instruction-level parallelism so that schedulers are always able to issue pairs of instructions for each warp.这也假设了足够的指令级并行性，以便调度程序始终能够为每个warp发出指令对。没懂**
+举例说明，如果指令I的输入操作数都位于寄存器，那么latency由寄存器是否依赖其他指令决定的，通俗来说，就是一些输入操作数是前一条指令的结果数，这种情况下，指令I的latency等于前一条指令的执行时间，在这期间，该warp处于空闲（idle）状态，warp调度器必须为其他warp调度指令。执行时间因指令而异，但对于计算能力3.x的设备而言，通常约为11个时钟周期，即需要44个warp同时执行才能完全隐藏延迟（这里假设warp执行每一条指令的时间都是11时钟周期）。当然，这种计算方式的假设前提是kernel有足够的指令集并行性，即warp调度器始终都在向warp发射指令。
 
     If some input operand resides in off-chip memory, the latency is much higher: 200 to 400 clock cycles for devices of compute capability 3.x. The number of warps required to keep the warp schedulers busy during such high latency periods depends on the kernel code and its degree of instruction-level parallelism. In general, more warps are required if the ratio of the number of instructions with no off-chip memory operands (i.e., arithmetic instructions most of the time) to the number of instructions with off-chip memory operands is low (this ratio is commonly called the arithmetic intensity of the program). For example, assume this ratio is 30, also assume the latencies are 300 cycles on devices of compute capability 3.x. Then about 40 warps are required for devices of compute capability 3.x (with the same assumptions as in the previous paragraph).
 如果指令的输入操作数位于片外（off-chip）存储器中，那么latency会更长：对于计算能力3.x的设备，通常需要200至400个时钟周期。 在如此长的等待时间内保持warp调度器繁忙所需的warp数量取决于kernel代码及其指令级并行度。 这里引入一个比率概念，这个比率通常被称为运算强度（Arithmetic Intensity），是指一个程序内，输入操作数不位于片外内存上的指令数目（通常是算数指令） / 输入操作数位于片外内存上的指令数目。Arithmetic Intensity越小，代表需要同时执行更多的warp才能隐藏latency。 例如，在计算能力3.x的设备上，假设运算强度为30，latency为300个周期，那么大概需要40个warp同时执行才能隐藏latency。
@@ -101,7 +102,7 @@ warp没有准备好执行下一条指令的另一个原因是，它是等待某�
 一个block所需的共享内存总量等于静态分配的共享内存量与动态分配的共享内存量的总和（注：共享内存有静态和动态两种分配方式，详见https://devblogs.nvidia.com/using-shared-memory-cuda-cc/）。
 
     The number of registers used by a kernel can have a significant impact on the number of resident warps. For example, for devices of compute capability 6.x, if a kernel uses 64 registers and each block has 512 threads and requires very little shared memory, then two blocks (i.e., 32 warps) can reside on the multiprocessor since they require 2x512x64 registers, which exactly matches the number of registers available on the multiprocessor. But as soon as the kernel uses one more register, only one block (i.e., 16 warps) can be resident since two blocks would require 2x512x65 registers, which are more registers than are available on the multiprocessor. Therefore, the compiler attempts to minimize register usage while keeping register spilling (see Device Memory Accesses) and the number of instructions to a minimum. Register usage can be controlled using the maxrregcount compiler option or launch bounds as described in Launch Bounds.
-kernel中每个线程使用的寄存器数量对活跃warp的数量有重大影响。 例如，对于计算能力6.x的设备，如果每个thread使用64个寄存器并且每个block有512个线程（假设只需要很少的共享内存，即共享内存不会造成限制），则一个 multiprocessor 同时只能执行两个block（即32个warp），因为它们需要2x512x64寄存器，与multiprocessor上可用的寄存器数量完全一致。 这种情况下，如果一个thread哪怕多使用一个寄存器，那么只能执行一个block（即16个warp），因为两个block需要2×512×65个寄存器，多于multiprocessor上可用的寄存器数量。 ** 因此，编译器会尝试编译优化，尽量减少寄存器使用量，同时尽可能的降低寄存器溢出（请参阅“设备内存访问”）和指令数量。** 开发者可以使用maxrregcount编译器选项或launch bounds来控制寄存器的使用量，如Launch Bounds章节中所述。
+kernel中每个线程使用的寄存器数量对活跃warp的数量有重大影响。 例如，对于计算能力6.x的设备，如果每个thread使用64个寄存器并且每个block有512个线程（假设只需要很少的共享内存，即共享内存不会造成限制），则一个 multiprocessor 同时只能执行两个block（即32个warp），因为它们需要2x512x64寄存器，与multiprocessor上可用的寄存器数量完全一致。 这种情况下，如果一个thread哪怕多使用一个寄存器，那么只能执行一个block（即16个warp），因为两个block需要2×512×65个寄存器，多于multiprocessor上可用的寄存器数量。 因此，编译器进行编译优化，尽量减少寄存器使用量，从而防止寄存器溢出问题发生（请参阅“Device Memory Accesses”）。 开发者可以使用maxrregcount编译器选项或launch bounds来控制寄存器的使用量，如Launch Bounds章节中所述。
 
     Each double variable and each long long variable uses two registers.
 每个double和long long类型占用两个寄存器。
@@ -113,7 +114,8 @@ kernel中每个线程使用的寄存器数量对活跃warp的数量有重大影�
     The number of threads per block should be chosen as a multiple of the warp size to avoid wasting computing resources with under-populated warps as much as possible.
 在设置执行配置时，block大小应该尽量为warp的倍数，否则会生成一些空闲thread来对齐，造成计算资源浪费。注：GPU内的最小执行单元是warp，如果设置block大小为20，那么实际运行中，会生成12个空闲thread补齐一个warp来执行。
 
-5.2.3.1. Occupancy Calculator
+#### 5.2.3.1. Occupancy Calculator
+#### 5.2.3.1  占用率计算器
 
     Several API functions exist to assist programmers in choosing thread block size based on register and shared memory requirements.
 有几个API函数可以帮助程序员根据kernel内寄存器和共享内存的使用量计算出最优线程块大小。
@@ -215,7 +217,8 @@ int launchMyKernel(int *array, int arrayCount)
     The CUDA Toolkit also provides a self-documenting, standalone occupancy calculator and launch configurator implementation in <CUDA_Toolkit_Path>/include/cuda_occupancy.h for any use cases that cannot depend on the CUDA software stack. A spreadsheet version of the occupancy calculator is also provided. The spreadsheet version is particularly useful as a learning tool that visualizes the impact of changes to the parameters that affect occupancy (block size, registers per thread, and shared memory per thread).
 对于不能直接使用CUDA软件环境的程序，CUDA Toolkit提供了独立的自带文档的占用率计算器和启用配置器，目录为 <CUDA_Toolkit_Path>/include/cuda_occupancy.h。 还提供了电子表格版本的占用率计算器。 电子表格版本是一个有效的学习工具，它可以可视化一些参数变化对占用率的影响，包括block大小，每个线程的寄存器使用量和共享内存使用量等。
 
-5.3. Maximize Memory Throughput
+## 5.3. Maximize Memory Throughput
+## 5.3. 最大化内存吞吐量
     The first step in maximizing overall memory throughput for the application is to minimize data transfers with low bandwidth.
     That means minimizing data transfers between the host and the device, as detailed in Data Transfer between Host and Device, since these have much lower bandwidth than data transfers between global memory and the device    .
     That also means minimizing data transfers between global memory and the device by maximizing use of on-chip memory: shared memory and caches (i.e., L1 cache and L2 cache available on devices of compute capability 2.x and higher, texture cache and constant cache available on all devices).
@@ -250,7 +253,8 @@ int launchMyKernel(int *array, int arrayCount)
 
 不同内存的访存模式对kernel的访存吞吐量有非常大的影响。因此最大化内存吞吐量的第二步就是根据每种内存的最佳访存模式来设计kernel的内存访存模式。全局内存带宽最低，因此优化对全局内存访问模式往往能取得明显的性能提升。
 
-5.3.1. Data Transfer between Host and Device
+### 5.3.1. Data Transfer between Host and Device
+### 5.3.1 如何进行host和device之间的数据传输
 
     Applications should strive to minimize data transfer between the host and the device. One way to accomplish this is to move more code from the host to the device, even if that means running kernels with low parallelism computations. Intermediate data structures may be created in device memory, operated on by the device, and destroyed without ever being mapped by the host or copied to host memory.
 应用程序应尽量减少主机和设备之间的数据传输。 实现此目的的一种方法是将更多的运算任务从主机端移动到设备端，甚至可以为此牺牲kernel的并行性。这种情况下，计算步骤产生的中间数据一般存放在设备端内存中，可以有效地避免拷贝到主机端内存中。
@@ -271,7 +275,9 @@ int launchMyKernel(int *array, int arrayCount)
     
 在设备内存和主机内存在同一个物理存储器的集成系统上，主机和设备内存之间的任何数据拷贝都是多余的，应该使用映射页面锁定内存。可以通过检查集成设备属性（请参阅Device Enumeration章节），如果等于1，则代表是集成设备。
 
-    5.3.2. Device Memory Accesses
+### 5.3.2. Device Memory Accesses
+### 5.3.2 如何访问设备端内存
+
     An instruction that accesses addressable memory (i.e., global, local, shared, constant, or texture memory) might need to be re-issued multiple times depending on the distribution of the memory addresses across the threads within the warp. How the distribution affects the instruction throughput this way is specific to each type of memory and described in the following sections. For example, for global memory, as a general rule, the more scattered the addresses are, the more reduced the throughput is.
 
 一个warp内的所有活跃线程同一时刻执行相同的指令。一条访问可寻址存储器（即，全局内存，本地内存，共享内存，常量内存或纹理内存）的指令可能会被发射多次，这取决于warp内线程所访问数据在存储器中的地址是如何分布的。
@@ -320,11 +326,12 @@ Size and Alignment Requirement
 
     The alignment requirement is automatically fulfilled for the built-in types of char, short, int, long, longlong, float, double like float2 or float4.
     
-内置类型的char，short，int，long，longlong，float，double类型**如float2或float4**会自动满足对齐要求。
+内置类型的char，short，int，long，longlong，float，double类型（如float2或float4）会自动满足对齐要求。
 
     For structures, the size and alignment requirements can be enforced by the compiler using the alignment specifiers __align__(8) or __align__(16), such as
 对于结构体，使用对齐说明符__align __（8）或__align __（16）来让编译器强制满足大小和对齐要求，例如
 
+```c++
 struct __align__(8) {
     float x;
     float y;
@@ -336,13 +343,14 @@ struct __align__(16) {
     float y;
     float z;
 };
+```
     Any address of a variable residing in global memory or returned by one of the memory allocation routines from the driver or runtime API is always aligned to at least 256 bytes.
 
 由驱动API或者运行API分配的内存的地址，都是对齐至少256个字节。
 
     Reading non-naturally aligned 8-byte or 16-byte words produces incorrect results (off by a few words), so special care must be taken to maintain alignment of the starting address of any value or array of values of these types. A typical case where this might be easily overlooked is when using some custom global memory allocation scheme, whereby the allocations of multiple arrays (with multiple calls to cudaMalloc() or cuMemAlloc()) is replaced by the allocation of a single large block of memory partitioned into multiple arrays, in which case the starting address of each array is offset from the block's starting address.
 
-读取非自然对齐的8字节或16字节字会产生不正确的结果，因此在为变量或者数组分配空间时，一定要注意保证起始地址的对齐。在自定义的全局内存分配方案中，这个问题很容易被忽略。自定义全局内存分配分案就是先申请一大块全局内存，然后通过地址偏移的方式为变量或者数组分配空间，优点是减少多次申请全局内存造成的额外开销。（详见我的博客）
+读取非自然对齐的8字节或16字节字会产生不正确的结果，因此在为变量或者数组分配空间时，一定要注意保证起始地址的对齐。在自定义的全局内存分配方案中，这个问题很容易被忽略。自定义全局内存分配分案就是先申请一大块全局内存，然后通过地址偏移的方式为变量或者数组分配空间，优点是减少多次申请全局内存造成的额外开销。（自定义的全局内存分配方案可参照博客《[CUDA进阶第六篇-GPU资源（显存、句柄等）管理][1]》）
 
 Two-Dimensional Arrays
 二维数组
@@ -380,7 +388,10 @@ Local Memory
     The local memory space resides in device memory, so local memory accesses have same high latency and low bandwidth as global memory accesses and are subject to the same requirements for memory coalescing as described in Device Memory Accesses. Local memory is however organized such that consecutive 32-bit words are accessed by consecutive thread IDs. Accesses are therefore fully coalesced as long as all threads in a warp access the same relative address (e.g., same index in an array variable, same member in a structure variable).
 
 本地内存位于设备内存中，因此本地内存与全局内存一样，高延迟和低带宽，并且也有内存访问合并机制（见Device Memory Accesses所述）。
-**然而，本地存储器被组织为使得连续的32位字由连续的线程ID访问。 因此，只要warp中的所有线程访问相同的相对地址（例如，数组变量中的相同索引，结构变量中的相同成员），访问就完全合并。**
+
+<font size=3 color=#00ffff>This is some text!</font>
+
+**然而，本地存储器被组织为使得连续的32位字由连续的线程ID访问。** 因此，只要warp中的所有线程访问相同的相对地址（例如，都访问数组中某个元素或结构体中的某个成员变量），所有访问请求会被完全合并。
 
 On some devices of compute capability 3.x local memory accesses are always cached in L1 and L2 in the same way as global memory accesses (see Compute Capability 3.x).
 
@@ -441,3 +452,5 @@ texture Memory或surface Memory的一些特性，使其在某些场景下，性�
  -  **打包数据可以在单个操作中广播以分离变量;**
  -  8-bit和16-bit的整型数据，可以选择性的转化为[0.0，1.0]或[-1.0,1.0]范围内的32位浮点值（请参阅Texture Memory）
 
+
+  [1]: https://blog.csdn.net/litdaguang/article/details/79330973
