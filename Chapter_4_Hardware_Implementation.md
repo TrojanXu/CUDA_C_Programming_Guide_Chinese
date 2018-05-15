@@ -12,7 +12,7 @@ NVIDIA GPU 架构是围绕可扩展的多线程阵列构建的 Streaming Multipr
 
 >When a CUDA program on the host CPU invokes a kernel grid, the blocks of the grid are enumerated and distributed to multiprocessors with available execution capacity.   
 
-当主机端的 CUDA 程序使用给定的执行配置调用 kernel 时，CUDA 设备对启动的线程块进行统计，并将其中一些线程块分配到有执行资源的多处理器上。
+当主机端的 CUDA 程序使用给定的执行配置调用 kernel 时，CUDA 设备对启动的线程块进行统计，并将其中一些线程块分配到有执行资源的 SM 上。
 
 >The threads of a thread block execute concurrently on one multiprocessor, and multiple thread blocks can execute concurrently on one multiprocessor. 
 
@@ -116,7 +116,7 @@ half-warp 指一个线程束的前一半或后一半，quarter-warp 指一个线
 
 >In practice, this is analogous to the role of cache lines in traditional code: Cache line size can be safely ignored when designing for correctness but must be considered in the code structure when designing for peak performance. 
 
-实践中，这类似于传统代码中缓存线的角色：以正确性为目标进行设计时，可忽略缓存线尺寸，但如果以峰值性能为目标进行设计，就必须考虑代码结构。
+实际上，这类似于传统代码中缓存线的角色：以正确性为目标进行设计时，可忽略缓存线尺寸，但如果以峰值性能为目标进行设计，就必须考虑代码结构。
 
 >Vector architectures, on the other hand, require the software to coalesce loads into vectors and manage divergence manually.
 
