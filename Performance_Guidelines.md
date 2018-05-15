@@ -35,7 +35,7 @@ CUDA性能优化围绕三个基本策略展开：
 
 Which strategies will yield the best performance gain for a particular portion of an application depends on the performance limiters for that portion; optimizing instruction usage of a kernel that is mostly limited by memory accesses will not yield any significant performance gain, for example. Optimization efforts should therefore be constantly directed by measuring and monitoring the performance limiters, for example using the CUDA profiler. Also, comparing the  or  - whichever makes more sense - of a particular kernel to the corresponding peak theoretical throughput of the device indicates how much room for improvement there is for the kernel.
 
-对程序进行优化时不能盲目的使用优化策略，某个优化策略能够获得的性能提升取决于程序的性能瓶颈。比如，一个kernel的性能瓶颈是访存，那么指令类优化策略不会产生明显的性能提升。因此，在进行CUDA优化之前，应该先通过CUDA分析器（NVPP，nvprof）分析出程序的性能瓶颈，再选择对应的优化策略进行优化。直接简单的做法就是，将kernel的某个性能指标（比如，浮点运算吞吐量，floating-point operation throughput，或内存吞吐量，memory throughput）与GPU设备的相应理论峰值进行比较，可以得出该kernel在这方面还有多大的提升空间。
+对程序进行优化时不能盲目的使用优化策略，某个优化策略能够获得的性能提升取决于程序的性能瓶颈。比如，一个kernel的性能瓶颈是访存，那么指令类优化策略不会产生明显的性能提升。因此，在进行CUDA优化之前，应该先通过CUDA分析器（NVPP，nvprof）分析出程序的性能瓶颈，再选择对应的优化策略进行优化。直接简单的做法就是，将kernel的某个性能指标，比如，浮点运算吞吐量（floating-point operation throughput）或内存吞吐量（memory throughput）与GPU设备的相应理论峰值进行比较，可以得出该kernel在这方面还有多大的提升空间。
 
 ----------
 
@@ -43,7 +43,7 @@ Which strategies will yield the best performance gain for a particular portion o
 ## 5.2  如何最大化利用率
 To maximize utilization the application should be structured in a way that it exposes as much parallelism as possible and efficiently maps this parallelism to the various components of the system to keep them busy most of the time.
 
-为了最大化GPU利用率，应该从多个层次尽可能的发掘程序的并行性，从而充分的利用GPU资源，保证GPU的各个模块大部分时间都处于忙碌状态。
+为了最大化GPU利用率，应该从多个层次尽可能多地发掘程序的并行性，从而充分的利用GPU资源，保证GPU的各个模块大部分时间都处于忙碌状态。
 下面将从上到下，依次从应用层次，设备层次，Multiprocessor层次三个层次，探究如何最大化GPU利用率
 
 ----------
@@ -81,7 +81,7 @@ As described in Hardware Multithreading, a GPU multiprocessor relies on thread-l
 如硬件多线程章节中所述，最大化 GPU multiprocessor各个功能单元的利用率，需要尽可能的最大化线程并行度。也就是说，利用率与执行状态warp的数量有直接关系。在每个指令发射周期，一个warp调度器选择一个处于准备状态的warp（如果有的话）执行其下一条指令，然后发射指令给该warp中的活跃线程。延迟（latency）即一个warp准备好执行下一条指令所花费的时钟周期数。实现充分利用资源，需要在每个时钟周期内，都有一些指令经过warp调度器发射给warp执行，不存在空闲时钟周期，换句话说，就是latency被完全隐藏了。
 
 The number of instructions required to hide a latency of L clock cycles depends on the respective throughputs of these instructions (see Arithmetic Instructions for the throughputs of various arithmetic instructions). Assuming maximum throughput for all instructions, it is: 8L for devices of compute capability 3.x since a multiprocessor issues a pair of instructions per warp over one clock cycle for four warps at a time, as mentioned in Compute Capability 3.x.
-完全隐藏长度为L时钟周期的latency所需要的指令数目取决于各指令的吞吐量（即指令执行所需要的时钟周期）（请参阅Arithmetic Instructions以了解各种算术指令的吞吐量）。在计算能力3.x的设备上，假设所有指令的吞吐量都是最大（8时钟周期），那么就需要在一个时钟周期内向4个warp发射*两条*指令，才能隐藏latency（如计算能力3.x章节中所述）。
+完全隐藏长度为L时钟周期的latency所需要的指令数目取决于各指令的吞吐量（即指令执行所需要的时钟周期）（请参阅Arithmetic Instructions以了解各种算术指令的吞吐量）。在计算能力3.x的设备上，假设所有指令的吞吐量都是最大（8时钟周期），那么就需要在一个时钟周期内向4个warp发射两条指令，才能隐藏latency（如计算能力3.x章节中所述）。
 
 For devices of compute capability 3.x, the eight instructions issued every cycle are four pairs for four different warps, each pair being for the same warp.
 
@@ -92,7 +92,7 @@ The most common reason a warp is not ready to execute its next instruction is th
 
 If all input operands are registers, latency is caused by register dependencies, i.e., some of the input operands are written by some previous instruction(s) whose execution has not completed yet. In the case of a back-to-back register dependency (i.e., some input operand is written by the previous instruction), the latency is equal to the execution time of the previous instruction and the warp schedulers must schedule instructions for different warps during that time. Execution time varies depending on the instruction, but it is typically about 11 clock cycles for devices of compute capability 3.x, which translates to 44 warps for devices of compute capability 3.x (assuming that warps execute instructions with maximum throughput, otherwise fewer warps are needed). This is also assuming enough instruction-level parallelism so that schedulers are always able to issue pairs of instructions for each warp.
 
-举例说明，如果指令I的输入操作数都位于寄存器，那么latency由寄存器是否依赖其他指令决定的，通俗来说，就是一些输入操作数是前一条指令的结果数，这种情况下，指令I的latency等于前一条指令的执行时间，在这期间，该warp处于空闲（idle）状态，warp调度器必须为其他warp调度指令。执行时间因指令而异，但对于计算能力3.x的设备而言，通常约为11个时钟周期，即需要44个warp同时执行才能完全隐藏延迟（这里假设warp执行每一条指令的时间都是11时钟周期）。当然，这种计算方式的假设前提是kernel有足够的指令集并行性，即warp调度器始终都在向warp发射指令。
+举例说明，如果指令I的输入操作数都位于寄存器，那么latency是由寄存器是否依赖其他指令决定的，通俗来说，就是一些输入操作数是前一条指令的结果数，这种情况下，指令I的latency等于前一条指令的执行时间，在这期间，该warp处于空闲（idle）状态，warp调度器必须为其他warp调度指令。执行时间因指令而异，但对于计算能力3.x的设备而言，通常约为11个时钟周期，即需要44个warp同时执行才能完全隐藏延迟（这里假设warp执行每一条指令的时间都是11时钟周期）。当然，这种计算方式的假设前提是kernel有足够的指令集并行性，即warp调度器始终都在向warp发射指令。
 
 If some input operand resides in off-chip memory, the latency is much higher: 200 to 400 clock cycles for devices of compute capability 3.x. The number of warps required to keep the warp schedulers busy during such high latency periods depends on the kernel code and its degree of instruction-level parallelism. In general, more warps are required if the ratio of the number of instructions with no off-chip memory operands (i.e., arithmetic instructions most of the time) to the number of instructions with off-chip memory operands is low (this ratio is commonly called the arithmetic intensity of the program). For example, assume this ratio is 30, also assume the latencies are 300 cycles on devices of compute capability 3.x. Then about 40 warps are required for devices of compute capability 3.x (with the same assumptions as in the previous paragraph).
 如果指令的输入操作数位于片外（off-chip）存储器中，那么latency会更长：对于计算能力3.x的设备，通常需要200至400个时钟周期。 在如此长的等待时间内保持warp调度器繁忙所需的warp数量取决于kernel代码及其指令级并行度。 这里引入一个比率概念，这个比率通常被称为运算强度（Arithmetic Intensity），是指一个程序内，输入操作数不位于片外内存上的指令数目（通常是算数指令） / 输入操作数位于片外内存上的指令数目。Arithmetic Intensity越小，代表需要同时执行更多的warp才能隐藏latency。 例如，在计算能力3.x的设备上，假设运算强度为30，latency为300个周期，那么大概需要40个warp同时执行才能隐藏latency。
