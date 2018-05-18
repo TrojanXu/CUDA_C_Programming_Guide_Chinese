@@ -8,7 +8,7 @@
 
 >The NVIDIA GPU architecture is built around a scalable array of multithreaded Streaming Multiprocessors (SMs).    
 
-NVIDIA GPU 架构是围绕可扩展的多线程阵列构建的 Streaming Multiprocessors（SMs）。
+NVIDIA GPU 架构是围绕可扩展的多线程 Streaming Multiprocessors（SMs）阵列构建的。
 
 >When a CUDA program on the host CPU invokes a kernel grid, the blocks of the grid are enumerated and distributed to multiprocessors with available execution capacity.   
 
@@ -86,7 +86,7 @@ half-warp 指一个线程束的前一半或后一半，quarter-warp 指一个线
 
 >A warp executes one common instruction at a time, so full efficiency is realized when all 32 threads of a warp agree on their execution path. 
 
-一个 warp 同时执行一条共同的指令，所以如果 warp 内所有的32个线程在同一条路径上执行时会达到最高效率率。
+一个 warp 同时执行一条共同的指令，所以如果 warp 内所有的32个线程在同一条路径上执行时会达到最高效率。
 
 >If threads of a warp diverge via a data-dependent conditional branch, the warp executes each branch path taken, disabling threads that are not on that path. 
 
@@ -112,7 +112,7 @@ half-warp 指一个线程束的前一半或后一半，quarter-warp 指一个线
 
 >For the purposes of correctness, the programmer can essentially ignore the SIMT behavior; however, substantial performance improvements can be realized by taking care that the code seldom requires threads in a warp to diverge. 
 
-为了正确性，程序员可忽略 SIMT 行为；只要尽量减少 warp 内线程的分支执行就可以使得代码性能得到显著提升。
+如果是为了程序的正确性，程序员可忽略 SIMT 行为特性；但是通过对代码的额外处理进而减少warp内线程分叉 ，代码性能可以得到显著提升。
 
 >In practice, this is analogous to the role of cache lines in traditional code: Cache line size can be safely ignored when designing for correctness but must be considered in the code structure when designing for peak performance. 
 
@@ -126,7 +126,7 @@ half-warp 指一个线程束的前一半或后一半，quarter-warp 指一个线
 
 >Prior to Volta, warps used a single program counter shared amongst all 32 threads in the warp together with an active mask specifying the active threads of the warp. 
 
-Volta 架构之前的所有架构，warp 使用32个线程共享一个活动掩码的单个程序计数器来标定 warp 中的活动线程。
+对于 Volta 架构之前的所有架构，warp 中的32个线程共享一个程序计数器，并用同一个活动掩码来标记 warp 中的活动线程。
 
 >As a result, threads from the same warp in divergent regions or different states of execution cannot signal each other or exchange data, and algorithms requiring fine-grained sharing of data guarded by locks or mutexes can easily lead to deadlock, depending on which warp the contending threads come from.
 
@@ -192,7 +192,7 @@ SM 调度 warp 时为每个 warp 配置的执行上下文（程序计数器，�
 
 >Therefore, switching from one execution context to another has no cost, and at every instruction issue time, a warp scheduler selects a warp that has threads ready to execute its next instruction (the active threads of the warp) and issues the instruction to those threads.
 
-因此，在各个执行上下文间进行切换是没有代价的，而且每个指令执行时，warp 调度器选择一个具有准备好执行其下一个指令的线程（warp的活动线程）的 warp，然后将指令分配给那些线程。  
+因此，在各个执行上下文间进行切换是没有代价的，每次要发射指令时，warp 调度器选择一个具有准备好执行其下一个指令的线程（warp的活动线程）的 warp，然后将指令发射给那些线程。  
 
 ---
 
@@ -208,7 +208,7 @@ SM 调度 warp 时为每个 warp 配置的执行上下文（程序计数器，�
 
 >There are also a maximum number of resident blocks and a maximum number of resident warps per multiprocessor. 
 
-且不同的计算设备都有其允许的最大线程块、warp、寄存器及共享内存值。
+每个 SM 都有其允许同时驻留的最大线程块数和 warp 数。
 
 >These limits as well the amount of registers and shared memory available on the multiprocessor are a function of the compute capability of the device and are given in Appendix Compute Capabilities. 
 
@@ -229,5 +229,5 @@ $$ ceil(\frac{ T }{ W_{size} }, 1)$$
  
 >The total number of registers and total amount of shared memory allocated for a block are documented in the CUDA Occupancy Calculator provided in the CUDA Toolkit.
 
-随 CUDA Toolkit 发布的文档 [CUDA Occupancy Calculator](https://developer.download.nvidia.com/compute/cuda/CUDA_Occupancy_calculator.xls) 给出了不同计算设备为每个线程块提供的寄存器及共享内存数量。
+这些限制值以及每个SM上可用寄存器和共享内存大小同设备的计算能力符合一定的函数关系,随 CUDA Toolkit 发布的文档 [CUDA Occupancy Calculator](https://developer.download.nvidia.com/compute/cuda/CUDA_Occupancy_calculator.xls) 对此给出了详细描述。
 
