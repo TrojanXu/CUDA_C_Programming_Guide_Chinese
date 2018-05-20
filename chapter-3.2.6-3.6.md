@@ -94,7 +94,7 @@ MyKernel<<<100, 64, 0, s0>>>(); // 在 device 1 上启动 kernel 并发送给 s0
 
 > When the application is run as a 64-bit process, devices of compute capability 2.0 and higher from the Tesla series may address each other's memory (i.e., a kernel executing on one device can dereference a pointer to the memory of the other device). This peer-to-peer memory access feature is supported between two devices if cudaDeviceCanAccessPeer() returns true for these two devices.
 
-当应用程序以 64 位进程的形式运行时，并且设备的计算能力在 2.0 或 Tesla 系列以上，就可以对其他设备的内存进行寻址操作（即，在一个 device 上执行的 kernel 可以解引用(*) 其他 device 内存上的指针）。如果 *cudaDeviceCanAccessPeer()* 返回为真，那么就是说明两个 device 之间支持 peer-to-peer 的内存访问特性。
+当应用程序以 64 位进程的形式运行时，计算能力为 2.0 及高于 Tesla 系列的设备，就可以相互进行内存寻址操作（即，在一个 device 上执行的 kernel 可以解引用(*) 其他 device 内存上的指针）。如果 *cudaDeviceCanAccessPeer()* 返回为真，那么就是说明两个 device 之间支持 peer-to-peer 的内存访问特性。
 
 > Peer-to-peer memory access must be enabled between two devices by calling cudaDeviceEnablePeerAccess() as illustrated in the following code sample. Each device can support a system-wide maximum of eight peer connections.
 
@@ -167,19 +167,19 @@ Consistent with the normal behavior of streams, an asynchronous copy between the
 ### 3.2.7. 统一虚拟地址空间
 > When the application is run as a 64-bit process, a single address space is used for the host and all the devices of compute capability 2.0 and higher. All host memory allocations made via CUDA API calls and all device memory allocations on supported devices are within this virtual address range. As a consequence:
 
-当应用程序以 64 位进程的形式运行，host 和所有计算能力在 2.0 或以上的 device 使用的是一个单地址空间。所有通过 CUDA API 调用的 host 内存分配和所有支持的 device 上的 device 内存分配都是在这个虚拟地址的范围内。所以：
+当应用程序以 64 位进程的形式运行，host 和所有计算能力在 2.0 及以上的 device 使用的是一个单地址空间。所有通过 CUDA API 调用的 host 内存分配和所有支持的 device 上的 device 内存分配都是在这个虚拟地址的范围内。所以：
 
 > The location of any memory on the host allocated through CUDA, or on any of the devices which use the unified address space, can be determined from the value of the pointer using cudaPointerGetAttributes().
 When copying to or from the memory of any device which uses the unified address space, the cudaMemcpyKind parameter of cudaMemcpy*() can be set to cudaMemcpyDefault to determine locations from the pointers. This also works for host pointers not allocated through CUDA, as long as the current device uses unified addressing.
 Allocations via cudaHostAlloc() are automatically portable (see Portable Memory) across all the devices for which the unified address space is used, and pointers returned by cudaHostAlloc() can be used directly from within kernels running on these devices (i.e., there is no need to obtain a device pointer via cudaHostGetDevicePointer() as described in Mapped Memory.
 
-通过 CUDA 分配的任意 host 内存的位置，或使用统一地址空间的任意 device 内存的位置，可以通过 *cudaPointerGetAttributes()* 获得指针的值来确定。
+通过 CUDA 分配的 host 任意内存的位置，或使用统一地址空间的 device 任意内存的位置，都可以使用 *cudaPointerGetAttributes()* 获得指针的值来确定。
 当使用统一地址空间的任意 device 内存进行拷入或拷出时，*cudaMemcpy\*()* 的“cudaMemcpy”样式的参数可以设置为 cudaMemcpyDefault，而由指针的值来确定位置。 这同样适用于不是通过 CUDA 分配的 host 指针，只要当前 device 使用统一寻址即可。
-通过 *cudaHostAlloc()* 分配的内存在所有使用统一地址空间的 device 上是自动 portable 的 [link](http://note.youdao.com/) （参阅 “Portable Memory” 章节），并且 *cudaHostAlloc()* 返回的指针是可以直接在这些 device 的 kernel 内使用的 [link](http://note.youdao.com/) （即，不必像 “Mapped Memory”章节所描述的那样，通过 *cudaHostGetDevicePointer()* 获得 device 的指针）
+通过 *cudaHostAlloc()* 分配的内存在所有使用统一地址空间的 device 上是自动 portable 的 [link]() （参阅 “Portable Memory” 章节），并且 *cudaHostAlloc()* 返回的指针可以直接在这些 device 的 kernel 内使用 [link]() （即，不必像 “Mapped Memory”章节所描述的那样，通过 *cudaHostGetDevicePointer()* 获得 device 的指针）
 
 > Applications may query if the unified address space is used for a particular device by checking that the unifiedAddressing device property (see Device Enumeration) is equal to 1.
 
-应用程序可以通过检查 unifiedAddressing 的 device 属性是否等于 1，来查询特定的 device 是否使用了统一地址空间 [link](http://note.youdao.com/) （参阅 “Device Enumeration” 章节）
+应用程序可以通过检查 *unifiedAddressing* 的 device 属性是否等于 1，来查询特定的 device 是否使用了统一地址空间 [link]() （参阅 “Device Enumeration” 章节）
 
 ---
 
@@ -196,7 +196,7 @@ Allocations via cudaHostAlloc() are automatically portable (see Portable Memory)
 
 > Using this API, an application can get the IPC handle for a given device memory pointer using cudaIpcGetMemHandle(), pass it to another process using standard IPC mechanisms (e.g., interprocess shared memory or files), and use cudaIpcOpenMemHandle() to retrieve a device pointer from the IPC handle that is a valid pointer within this other process. Event handles can be shared using similar entry points.
 
-通过该 API，一个应用程序可以通过 *cudaIpcGetMemHandle()* 获得一个用于给定的 device 内存指针的 IPC 句柄，使用标准的 IPC 机制，将它传给其他进程（即，跨进程的共享内存或文件），然后通过 *cudaIpcOpenMemHandle()* 从 IPC 句柄中取得一个 device 指针（它是在其他进程内有效的指针）。时间句柄可以通过类似的切入点进行共享。
+通过该 API，一个应用程序可以通过 *cudaIpcGetMemHandle()* 获得一个用于给定的 device 内存指针的 IPC 句柄，使用标准的 IPC 机制，将它传给其他进程（例如，跨进程的共享内存或文件），然后通过 *cudaIpcOpenMemHandle()* 从 IPC 句柄中取得一个 device 指针（它是在其他进程内有效的指针）。时间句柄可以通过类似的切入点进行共享。
 
 > An example of using the IPC API is where a single master process generates a batch of input data, making the data available to multiple slave processes without requiring regeneration or copying.
 
@@ -217,7 +217,7 @@ Allocations via cudaHostAlloc() are automatically portable (see Portable Memory)
 
 > The runtime maintains an error variable for each host thread that is initialized to cudaSuccess and is overwritten by the error code every time an error occurs (be it a parameter validation error or an asynchronous error). cudaPeekAtLastError() returns this variable. cudaGetLastError() returns this variable and resets it to cudaSuccess.
 
-运行时为每一个 host 线程 维护了一个错误变量，初始化 cudaSuccess，每次发生错误后（它可能是一个参数验证错误或是一个异步错误）错误代码都会重写该变量。 *cudaPeekAtLastError()* 返回该变量。*cudaGetLastError()* 返回这个变量并重置它为 cudaSuccess。
+运行时为每一个 host 线程 维护了一个错误变量，初始化 cudaSuccess，每次发生错误后（它可能是一个参数验证错误或是一个异步错误）错误代码都会覆盖该变量。 *cudaPeekAtLastError()* 返回该变量。*cudaGetLastError()* 返回这个变量并重置它为 cudaSuccess。
 
 > Kernel launches do not return any error code, so cudaPeekAtLastError() or cudaGetLastError() must be called just after the kernel launch to retrieve any pre-launch errors. To ensure that any error returned by cudaPeekAtLastError() or cudaGetLastError() does not originate from calls prior to the kernel launch, one has to make sure that the runtime error variable is set to cudaSuccess just before the kernel launch, for example, by calling cudaGetLastError() just before the kernel launch. Kernel launches are asynchronous, so to check for asynchronous errors, the application must synchronize in-between the kernel launch and the call to cudaPeekAtLastError() or cudaGetLastError().
 
@@ -247,7 +247,7 @@ kernel 的启动不会返回任务的错误码，所以 *cudaPeekAtLastError()* 
 
 > CUDA supports a subset of the texturing hardware that the GPU uses for graphics to access texture and surface memory. Reading data from texture or surface memory instead of global memory can have several performance benefits as described in Device Memory Accesses.
 
-CUDA 支持一个texture硬件的子集，GPU 将它用于图形访问 texture 和 surface 内存。从 texture 或 surface 内存读取数据，而不是从 global 内存，可以有一些性能的提升 [link](http://note.youdao.com/) （如 “Device Memory Accesses” 章节所述）
+CUDA 支持一个 texturing 硬件的子集，GPU 将它用于图形访问 texture 和 surface 内存。从 texture 或 surface 内存读取数据，而不是从 global memory，可以有一些性能的提升 [link](http://note.youdao.com/) （如 “Device Memory Accesses” 章节所述）
 
 > There are two different APIs to access texture and surface memory:
 
@@ -258,14 +258,14 @@ The texture object API that is only supported on devices of compute capability 3
 The texture reference API has limitations that the texture object API does not have. They are mentioned in Texture Reference API.
 
 texture reference API 是全 device 支持的，texture object API 仅有计算能力 3.x 的 device 才支持。
-不过 texture reference API 有 texture object API 所没有的一些限制。这些将会在 [link](http://note.youdao.com/) "Texture Reference API" 章节提到。
+不过 texture reference API 有 texture object API 所没有的一些限制。这些将会在 [link]() "Texture Reference API" 章节提到。
 
 #### 3.2.11.1. Texture Memory
 #### 3.2.11.1 texture 内存
 
 > Texture memory is read from kernels using the device functions described in Texture Functions. The process of reading a texture calling one of these functions is called a texture fetch. Each texture fetch specifies a parameter called a texture object for the texture object API or a texture reference for the texture reference API. 
 
-从 kernel 中读取 texture 内存使用的是 [link](http://note.youdao.com/) “Texture Functions 章节” 描述的 device 方法。读取 texture 并调用其中一个函数的过程称为 texture fetch 。每一个 texture fetch 都为 texture object API 指定一个名为 texture object 的参数，或者为 texture reference API 指定一个名为 texture reference 的 参数。
+从 kernel 中读取 texture 内存使用的是 [link]() “Texture Functions 章节” 描述的 device 方法。读取一张 texture 并调用其中一个函数的过程称为 texture fetch 。每一个 texture fetch 都为 texture object API 指定一个名为 texture object 的参数，或者为 texture reference API 指定一个名为 texture reference 的 参数。
 
 > The texture object or the texture reference specifies:
 
@@ -273,15 +273,15 @@ texture object 或 texture reference 的详细说明：
 
 >- The texture, which is the piece of texture memory that is fetched. Texture objects are created at runtime and the texture is specified when creating the texture object as described in Texture Object API. Texture references are created at compile time and the texture is specified at runtime by bounding the texture reference to the texture through runtime functions as described in Texture Reference API; several distinct texture references might be bound to the same texture or to textures that overlap in memory. A texture can be any region of linear memory or a CUDA array (described in CUDA Arrays).
 
-- texture ，是从 texture 内存中 fetch 出的一块。texture object 在运行时创建，当如 [link](http://note.youdao.com/)  “Texture Object API 章节” 所述创建了 texture object，texture 就被指定了。texture reference 是在编译期创建的，通过使用 [link](http://note.youdao.com/)  “Texture Reference API 章节” 运行时方法绑定 texture reference 到 texture，来在运行时指定 texture。一些不同的 texture refernce 可能被绑定到相同的 texture 或在内存中有重叠的 texture 。texture 可以是线性内存或者 CUDA 数组中的任意区域（如 [link](http://note.youdao.com/) “CUDA Arrays 章节” 所述）
+- texture ，是从 texture 内存中 fetch 出的一块。texture object 在运行时创建 texture object，当如 [link]()  “Texture Object API 章节” 所述创建了 texture object，texture 就被指定了。texture reference 是在编译期创建的，通过使用 [link]()  “Texture Reference API 章节” 所述的运行时方法绑定 texture reference 到 texture，以便在运行时指定 texture。一些不同的 texture refernce 可能被绑定到相同的 texture 或在内存中有重叠的 texture 。texture 可以是线性内存或者 CUDA 数组中的任意区域（如 [link]() “CUDA Arrays 章节” 所述）
 
 >- Its dimensionality that specifies whether the texture is addressed as a one dimensional array using one texture coordinate, a two-dimensional array using two texture coordinates, or a three-dimensional array using three texture coordinates. Elements of the array are called texels, short for texture elements. The texture width, height, and depth refer to the size of the array in each dimension. Table 14 lists the maximum texture width, height, and depth depending on the compute capability of the device.
 
-- 纹理的维度指定了它的寻址方式，比如一维数组使用一维纹理坐标，二维数组使用二维纹理坐标，三维数组使用三维纹理坐标。每个数组的元素被称作 texels，texture elements 的简称。纹理的宽度、高度、深度都和数组的每一维的大小有关。[link](http://note.youdao.com/) 表 14 展示了依赖于 device 计算能力的最大纹理宽度、高度、深度。
+- 纹理的维度指定了它的寻址方式，比如一维数组使用一维纹理坐标，二维数组使用二维纹理坐标，三维数组使用三维纹理坐标。每个数组的元素被称作 texels，texture elements 的简称。纹理的宽度、高度、深度都和数组的每一维的大小有关。[link]() 表 14 展示了依赖于 device 计算能力的最大纹理宽度、高度、深度。
 
 >- The type of a texel, which is restricted to the basic integer and single-precision floating-point types and any of the 1-, 2-, and 4-component vector types defined in char, short, int, long, longlong, float, double that are derived from the basic integer and single-precision floating-point types.
 
-- texel 的类型只能是基本的整型或者单精度浮点型，任何的以 [link](http://note.youdao.com/) char, short, int, long, longlong, float, double定义的 1-，2-，和4-成员 vector 类型都是派生自基础的整型和单精度浮点型。
+- texel 的类型只能是基本的整型或者单精度浮点型，任何的以 [link]() char, short, int, long, longlong, float, double定义的 1-，2-，和4-成员 vector 类型都是派生自基础的整型和单精度浮点型。
 
 >- The read mode, which is equal to cudaReadModeNormalizedFloat or cudaReadModeElementType. If it is cudaReadModeNormalizedFloat and the type of the texel is a 16-bit or 8-bit integer type, the value returned by the texture fetch is actually returned as floating-point type and the full range of the integer type is mapped to [0.0, 1.0] for unsigned integer type and [-1.0, 1.0] for signed integer type; for example, an unsigned 8-bit texture element with the value 0xff reads as 1. If it is cudaReadModeElementType, no conversion is performed.
 
@@ -289,7 +289,7 @@ texture object 或 texture reference 的详细说明：
 
 >- Whether texture coordinates are normalized or not. By default, textures are referenced (by the functions of Texture Functions) using floating-point coordinates in the range [0, N-1] where N is the size of the texture in the dimension corresponding to the coordinate. For example, a texture that is 64x32 in size will be referenced with coordinates in the range [0, 63] and [0, 31] for the x and y dimensions, respectively. Normalized texture coordinates cause the coordinates to be specified in the range [0.0, 1.0-1/N] instead of [0, N-1], so the same 64x32 texture would be addressed by normalized coordinates in the range [0, 1-1/N] in both the x and y dimensions. Normalized texture coordinates are a natural fit to some applications' requirements, if it is preferable for the texture coordinates to be independent of the texture size.
 
-- texture 坐标是否被规范化。默认情况下，texture 的引用（通过 [link](http://note.youdao.com/) “Texture Functions” 章节的方法）使用的是 [0, N-1] 范围的浮点坐标，其中 N 表示对应于坐标的某一维度上的 texture 的大小。例如，64x32 大小的 texture 将分别以 x 维度在 [0, 63]、y 维度在 [0, 31] 的范围内的坐标进行引用。规范化的 texture 坐标将原本的 [0, N-1] 替换为 [0.0, 1.0 - 1/N] 的范围，因此，同样 64x32 大小的 texture 将在 x、y 两个维度上都以 [0, 1 - 1/N] 的规范化坐标进行寻址。规范化的 texture 坐标更适用于某些需要与 texture 大小无关的应用程序。
+- texture 坐标是否被规范化。默认情况下，texture 的引用（通过 [link]() “Texture Functions” 章节的方法）使用的是 [0, N-1] 范围的浮点坐标，其中 N 表示对应于坐标的某一维度上的 texture 的大小。例如，64x32 大小的 texture 将分别以 x 维度在 [0, 63]、y 维度在 [0, 31] 的范围内的坐标进行引用。规范化的 texture 坐标将原本的 [0, N-1] 替换为 [0.0, 1.0 - 1/N] 的范围，因此，同样 64x32 大小的 texture 将在 x、y 两个维度上都以 [0, 1 - 1/N] 的规范化坐标进行寻址。规范化的 texture 坐标更适用于某些需要与 texture 大小无关的应用程序。
 
 >- The addressing mode. It is valid to call the device functions of Section B.8 with coordinates that are out of range. The addressing mode defines what happens in that case. The default addressing mode is to clamp the coordinates to the valid range: [0, N) for non-normalized coordinates and [0.0, 1.0) for normalized coordinates. If the border mode is specified instead, texture fetches with out-of-range texture coordinates return zero. For normalized coordinates, the wrap mode and the mirror mode are also available. When using the wrap mode, each coordinate x is converted to frac(x)=x - floor(x) where floor(x) is the largest integer not greater than x. When using the mirror mode, each coordinate x is converted to frac(x) if floor(x) is even and 1-frac(x) if floor(x) is odd. The addressing mode is specified as an array of size three whose first, second, and third elements specify the addressing mode for the first, second, and third texture coordinates, respectively; the addressing mode are cudaAddressModeBorder, cudaAddressModeClamp, cudaAddressModeWrap, and cudaAddressModeMirror; cudaAddressModeWrap and cudaAddressModeMirror are only supported for normalized texture coordinates
 
@@ -297,31 +297,31 @@ texture object 或 texture reference 的详细说明：
 
 >- The filtering mode which specifies how the value returned when fetching the texture is computed based on the input texture coordinates. Linear texture filtering may be done only for textures that are configured to return floating-point data. It performs low-precision interpolation between neighboring texels. When enabled, the texels surrounding a texture fetch location are read and the return value of the texture fetch is interpolated based on where the texture coordinates fell between the texels. Simple linear interpolation is performed for one-dimensional textures, bilinear interpolation for two-dimensional textures, and trilinear interpolation for three-dimensional textures. Texture Fetching gives more details on texture fetching. The filtering mode is equal to cudaFilterModePoint or cudaFilterModeLinear. If it is cudaFilterModePoint, the returned value is the texel whose texture coordinates are the closest to the input texture coordinates. If it is cudaFilterModeLinear, the returned value is the linear interpolation of the two (for a one-dimensional texture), four (for a two dimensional texture), or eight (for a three dimensional texture) texels whose texture coordinates are the closest to the input texture coordinates. cudaFilterModeLinear is only valid for returned values of floating-point type.
 
-- 过滤模式指定了当 texture 执行 fetch 时的返回值是如何根据输入 texture 的坐标进行计算的。线性 texture 过滤仅仅适用于被配置为返回值浮点型的 texture。它执行的是和邻域 texels 的低精度插值。当启用时，texture fetch 连同周围的 texels 也一起读取， texture fetch 的返回值是基于这些 texels 之间的 texture 坐标进行插值的。简单线性插值用于一维纹理，双线性插值用于二维纹理，三线性插值用于三维纹理。[link](http://note.youdao.com/) “Texture Fetching 章节” 给出了更多的 texture fetching 细节。过滤模式包括两种：*cudaFilterModePoint* 或 *cudaFilterModeLinear* 。如果是 *cudaFilterModePoint* ，返回的 是其纹理坐标最接近输入纹理坐标的 exel。如果是cudaFilterModeLinear，返回的是 2 个（对于一维纹理）、4 个（对于二维纹理）、或 8 个（对于一个三维纹理）其 texutre 坐标最接近输入 texture 坐标的 texels 的线性插值。*cudaFilterModeLinear* 只适用于浮点类型的返回值。
+- 过滤模式指定了当 texture 执行 fetch 时的返回值是如何根据输入 texture 的坐标进行计算的。线性 texture 过滤仅仅适用于被配置为返回值浮点型的 texture。它执行的是和邻域 texels 的低精度插值。当启用时，texture fetch 连同周围的 texels 也一起读取， texture fetch 的返回值是基于这些 texels 之间的 texture 坐标进行插值的。简单线性插值用于一维纹理，双线性插值用于二维纹理，三线性插值用于三维纹理。[link]() “Texture Fetching 章节” 给出了更多的 texture fetching 细节。过滤模式包括两种：*cudaFilterModePoint* 或 *cudaFilterModeLinear* 。如果是 *cudaFilterModePoint* ，返回的 是其纹理坐标最接近输入纹理坐标的 exel。如果是cudaFilterModeLinear，返回的是 2 个（对于一维纹理）、4 个（对于二维纹理）、或 8 个（对于一个三维纹理）其 texutre 坐标最接近输入 texture 坐标的 texels 的线性插值。*cudaFilterModeLinear* 只适用于浮点类型的返回值。
 
 > Texture Object API introduces the texture object API.
 
-[link](http://note.youdao.com/) Texture Object API 介绍了texture object API。
+[link]() Texture Object API 介绍了texture object API。
 
 > Texture Reference API introduces the texture reference API.
 
-[link](http://note.youdao.com/) Texture Reference API 介绍了texture reference API
+[link]() Texture Reference API 介绍了texture reference API
 
 > 16-Bit Floating-Point Textures explains how to deal with 16-bit floating-point textures.
 
-[link](http://note.youdao.com/) 16-Bit Floating-Point Textures 解释了如何处理 16 位浮点型 texture。
+[link]() 16-Bit Floating-Point Textures 解释了如何处理 16 位浮点型 texture。
 
 > Textures can also be layered as described in Layered Textures.
 
-texture 也可以被分层，如[link](http://note.youdao.com/) Layered Texture 所述
+texture 也可以被分层，如[link]() Layered Texture 所述
 
 > Cubemap Textures and Cubemap Layered Textures describe a special type of texture, the cubemap texture.
 
-[link](http://note.youdao.com/) Cubemap Textures 和[link](http://note.youdao.com/) Cubemap Layered Textures 描述了一种特殊类型的 texture，立方体贴图 texture。
+[link]() Cubemap Textures 和[link]() Cubemap Layered Textures 描述了一种特殊类型的 texture，立方体贴图 texture。
 
 > Texture Gather describes a special texture fetch, texture gather.
 
-[link](http://note.youdao.com/) Texture Gather 描述了一种特殊的 texture fetch，texture 聚集。
+[link]() Texture Gather 描述了一种特殊的 texture fetch，texture 聚集。
 
 ##### 3.2.11.1.1. Texture Object API
 ##### 3.2.11.1.1. 纹理对象 API
@@ -455,7 +455,7 @@ int main()
 
 > Some of the attributes of a texture reference are immutable and must be known at compile time; they are specified when declaring the texture reference. A texture reference is declared at file scope as a variable of type texture: 
 
-texture reference 的一些属性是不变的，并且必须是编译器可知；它们在 texture reference 声明的时候就被指定了。一个 texture reference 是被声明在文件范围的一类 texture 变量。
+texture reference 的一些属性是不变的，并且必须是编译期可知的；它们在 texture reference 声明的时候就被指定了。一个 texture reference 是被声明在文件范围的一种 texture 变量。
 
 ``` cuda
 texture<DataType, Type, ReadMode> texRef;
@@ -539,7 +539,7 @@ struct cudaChannelFormatDesc {
  
  > Before a kernel can use a texture reference to read from texture memory, the texture reference must be bound to a texture using cudaBindTexture() or cudaBindTexture2D() for linear memory, or cudaBindTextureToArray() for CUDA arrays. cudaUnbindTexture() is used to unbind a texture reference. Once a texture reference has been unbound, it can be safely rebound to another array, even if kernels that use the previously bound texture have not completed. It is recommended to allocate two-dimensional textures in linear memory using cudaMallocPitch() and use the pitch returned by cudaMallocPitch() as input parameter to cudaBindTexture2D(). 
  
- 在 kernel 可以使用一个 texture reference 去读取 texture 内存之前，texture reference 必须绑定到一个 texture，对于线性内存可以使用 *cudaBindTexture()* 或 *cudaBindTexture2D()*，对于 CUDA array 则使用 *cudaBindTextureToArray()* 。*cudaUnbindTexture()* 是用于解绑 texture reference 的。一旦 texture reference 解绑了，它就可以安全地重新绑定到其他数组上，即使使用之前绑定的 texture reference 的 kernel 还没有执行完毕。官方推荐在线性内存上使用 *cudaMallocPitch()* 分配二维的 texture，并使用 *cudaMallocPitch()* 返回的 pitch 参数作为 *cudaBindTexture2D()* 的输入参数。
+ 在 kernel 可以使用一个 texture reference 去读取 texture 内存之前，texture reference 必须绑定到一个 texture，对于线性内存可以使用 *cudaBindTexture()* 或 *cudaBindTexture2D()*，对于 CUDA array 则使用 *cudaBindTextureToArray()* 。*cudaUnbindTexture()* 是用于解绑 texture reference 的。一旦 texture reference 解绑了，即使使用之前绑定的 texture reference 的 kernel 还没有执行完毕，它仍然可以安全地重新绑定到其他数组上。官方推荐在线性内存上使用 *cudaMallocPitch()* 分配二维的 texture，并使用 *cudaMallocPitch()* 返回的 pitch 参数作为 *cudaBindTexture2D()* 的输入参数。
  
  > The following code samples bind a 2D texture reference to linear memory pointed to by devPtr: 
  
@@ -665,7 +665,7 @@ int main()
     // 绑定数组到 texture reference
     cudaBindTextureToArray(texRef, cuArray, channelDesc);
 
-    // 在 device 内存你上分配变换的结果
+    // 在 device 内存上分配变换的结果
     float* output;
     cudaMalloc(&output, width * height * sizeof(float));
 
@@ -725,7 +725,7 @@ CUDA 数组支持 16 位的浮点型或称作半精度的格式，都是和 IEEE
 
 > Layered textures are only supported on devices of compute capability 2.0 and higher.
 
-分层纹理仅支持计算能力在 2.0 及以上的设备
+分层纹理仅在计算能力在 2.0 及以上的设备上被支持
 
 ##### 3.2.11.1.5. Cubemap Textures
 ##### 3.2.11.1.5 立方体贴图纹理
@@ -740,7 +740,7 @@ CUDA 数组支持 16 位的浮点型或称作半精度的格式，都是和 IEEE
 
 > • The cubemap is addressed using three texture coordinates x, y, and z that are interpreted as a direction vector emanating from the center of the cube and pointing to one face of the cube and a texel within the layer corresponding to that face. More specifically, the face is selected by the coordinate with largest magnitude m and the corresponding layer is addressed using coordinates (s/m+1)/2 and (t/m+1)/2 where s and t are defined in Table 1. 
 
-立方体贴图的寻址采用的是三个 texture 坐标x, y, z，可以理解为立方体中心射出的方向向量并指向其中一个面的层内的纹素。更具体来说，该面是由坐标和最大幅值 m 来选择的，而对应的层是由 (s/m+1)/2 和 (t/m+1)/2 坐标来寻址的， s 和 t 如下表所定义。
+立方体贴图的寻址采用的是三个 texture 坐标x, y, z，可以理解为立方体中心射出的，并指向立方体其中一个面的方向向量，其值是该面层内的纹素。更具体来说，该面是由坐标和最大幅值 m 来选择的，而对应的层是由 (s/m+1)/2 和 (t/m+1)/2 坐标来寻址的， s 和 t 如下表所定义。
 
  **Table 1. Cubemap Fetch**
 
@@ -813,7 +813,7 @@ CUDA 数组支持 16 位的浮点型或称作半精度的格式，都是和 IEEE
 
 > Cubemap textures are only supported on devices of compute capability 2.0 and higher.
 
-立方体贴图纹理仅支持计算能力在 2.0 及以上的设备
+立方体贴图纹理仅被计算能力在 2.0 及以上的设备支持
 
 ##### 3.2.11.1.6. Cubemap Layered Textures
 ##### 3.2.11.1.6. 立方体贴图分层纹理
@@ -843,7 +843,7 @@ CUDA 数组支持 16 位的浮点型或称作半精度的格式，都是和 IEEE
 
 > Texture gather is a special texture fetch that is available for two-dimensional textures only. It is performed by the tex2Dgather() function, which has the same parameters as tex2D(), plus an additional comp parameter equal to 0, 1, 2, or 3 (see tex2Dgather() and tex2Dgather()). It returns four 32-bit numbers that correspond to the value of the component comp of each of the four texels that would have been used for bilinear filtering during a regular texture fetch. For example, if these texels are of values (253, 20, 31, 255), (250, 25, 29, 254), (249, 16, 37, 253), (251, 22, 30, 250), and comp is 2, tex2Dgather() returns (31, 29, 37, 30). 
 
-texture gather 是一种特殊的 texture fetch ，仅适用于二维纹理。通过 *tex2Dgather()* 方法执行，除了与 *tex2D()* 具有相同的参数外，还有一个参数 comp，其值为 0, 1, 2 或 3 （参见 *tex2Dgather()* 和 *tex2Dgather()* ）。它返回 4 个 32 位的数字，这些数字对应于在常规纹理 fetch 过程中用于双线性过滤的四个 texel 的第 comp 个成员  的值。例如，如果这些texel值为（253、20、**31**,255）、（250、25、**29**、254）、（249、16、**37**,253）、（251、22、**30**、250）和 comp 的值为 2，则 *tex2Dgather()* 返回（31、29、37、30）。
+texture gather 是一种特殊的 texture fetch ，仅适用于二维纹理。通过 *tex2Dgather()* 方法执行，除了与 *tex2D()* 具有相同的参数外，还有一个参数 comp，其值为 0, 1, 2 或 3 （参见 *tex2Dgather()* 和 *tex2Dgather()* ）。它返回 4 个 32 位的数字，这些数字对应于在常规纹理 fetch 过程中用于双线性过滤的四个 texel 的第 comp 个成员  的值。例如，如果这些texel值为（253, 20, **31**, 255）、（250, 25, **29**, 254）、（249, 16, **37**, 253）、（251, 22, **30**, 250）和 comp 的值为 2，则 *tex2Dgather()* 返回（31, 29, 37, 30）。
 
 > Note that texture coordinates are computed with only 8 bits of fractional precision. tex2Dgather() may therefore return unexpected results for cases where tex2D() would use 1.0 for one of its weights (α or β, see Linear Filtering). For example, with an x texture coordinate of 2.49805: xB=x-0.5=1.99805, however the fractional part of xB is stored in an 8-bit fixed-point format. Since 0.99805 is closer to 256.f/256.f than it is to 255.f/256.f, xB has the value 2. A tex2Dgather() in this case would therefore return indices 2 and 3 in x, instead of indices 1 and 2. 
 
@@ -998,7 +998,7 @@ CUDA 数组的读写必须通过匹配维度的 surface reference 并使用匹�
 
 > Unlike texture memory, surface memory uses byte addressing. This means that the x-coordinate used to access a texture element via texture functions needs to be multiplied by the byte size of the element to access the same element via a surface function. For example, the element at texture coordinate x of a one-dimensional floating-point CUDA array bound to a texture reference texRef and a surface reference surfRef is read using tex1d(texRef, x) via texRef, but surf1Dread(surfRef, 4*x) via surfRef. Similarly, the element at texture coordinate x and y of a two-dimensional floating-point CUDA array bound to a texture reference texRef and a surface reference surfRef is accessed using tex2d(texRef, x, y) via texRef, but surf2Dread(surfRef, 4*x, y) via surfRef (the byte offset of the y-coordinate is internally calculated from the underlying line pitch of the CUDA array). 
 
-不同于 texture 内存，surface 内存使用字节寻址。这意味着通过 texture 方法访问的 x 坐标的 texture 元素，通过 surface 方法的话还需要乘上相应元素的字节大小。例如，一个一维的浮点 CUDA 数组分别被绑定到一个 texture reference —— texRef 和一个 surface reference —— surfRef 上，要访问位于纹理坐标 x 上的元素，texRef 通过 *tex1d（texRef，x）* 来读取，但是 surfRef 则是通过 *surf1Dread（surfRef，4 x）* 来读取。类似地，，一个分别绑定到一个 texture reference —— texRef 和一个 surface reference —— surfRef 的二维浮点 CUDA 数组，其位于纹理坐标 x 和 y 的元素，texRef 是通过 *tex2d（texRef，x，y）* 来访问，而 surfRef 则是通过  *surf2Dread（surfRef，4 x，y）* 来访问（y 坐标的字节偏移量是从 CUDA 数组潜在的 line pitch 内部计算的）。
+不同于 texture 内存，surface 内存使用字节寻址。这意味着通过 texture 方法访问的 x 坐标的 texture 元素，通过 surface 方法的话还需要乘上相应元素的字节大小。例如，一个一维的浮点 CUDA 数组分别被绑定到一个 texture reference —— texRef 和一个 surface reference —— surfRef 上，要访问位于纹理坐标 x 上的元素，texRef 通过 *tex1d（texRef，x）* 来读取，但是 surfRef 则是通过 *surf1Dread（surfRef，4\*x）* 来读取。类似地，，一个分别绑定到一个 texture reference —— texRef 和一个 surface reference —— surfRef 的二维浮点 CUDA 数组，其位于纹理坐标 x 和 y 的元素，texRef 是通过 *tex2d（texRef，x，y）* 来访问，而 surfRef 则是通过  *surf2Dread（surfRef，4\*x，y）* 来访问（y 坐标的字节偏移量是从 CUDA 数组潜在的 line pitch 内部计算的）。
 
 > The following code sample applies some simple transformation kernel to a texture. 
 
@@ -1622,7 +1622,7 @@ void releaseVB()
 
 > Second, applications should create multiple CUDA contexts, one for each GPU in the SLI configuration. While this is not a strict requirement, it avoids unnecessary data transfers between devices. The application can use the cudaD3D[9|10|11]GetDevices() for Direct3D and cudaGLGetDevices() for OpenGL set of calls to identify the CUDA device handle(s) for the device(s) that are performing the rendering in the current and next frame. Given this information the application will typically choose the appropriate device and map Direct3D or OpenGL resources to the CUDA device returned by cudaD3D[9|10|11]GetDevices() or cudaGLGetDevices() when the deviceList parameter is set to cudaD3D[9|10|11]DeviceListCurrentFrame or cudaGLDeviceListCurrentFrame. 
 
-其次，应用程序本该创建多个 CUDA 上下文，SLI 中的每个 GPU 一个。但是这并不是一个严格的要求，这样可以避免不必要的设备间的数据传输。应用程序可以分别为 D3D 和 GL 利用 *cudaD3D[9|10|11]GetDevices()* 和 *cudaGLGetDevices()* 形式的调用集合来区分为当前帧执行渲染和下一帧执行渲染的 CUDA 设备的句柄。鉴于这些信息，当 deviceList 参数被设置为 *cudaD3D[9|10|11]DeviceListCurrentFrame* 或 *cudaGLDeviceListCurrentFrame* 时，应用程序通常就可以选择出合适的设备并映射 D3D 或 GL 的资源到 *cudaD3D[9|10|11]GetDevices()* 或 *cudaGLGetDevices()* 返回的 CUDA 设备上。
+其次，应用程序本该创建多个 CUDA 上下文，SLI 中的每个 GPU 一个。但是这并不是一个严格的要求，这样可以避免不必要的设备间的数据传输。应用程序可以分别为 D3D 和 GL 利用 *cudaD3D[9|10|11]GetDevices()* 和 *cudaGLGetDevices()* 形式的调用集合来区分为当前帧执行渲染和下一帧执行渲染的 CUDA 设备的句柄。鉴于这些信息，当 deviceList 参数被设置为 *cudaD3D[9|10|11]DeviceListCurrentFrame* 或 *cudaGLDeviceListCurrentFrame* 时，应用程序通常就可以选择出合适的设备并映射 D3D 或 GL 的资源到由 *cudaD3D[9|10|11]GetDevices()* 或 *cudaGLGetDevices()* 返回的 CUDA 设备上。
 
 > Please note that resource returned from cudaGraphicsD9D[9|10|11]RegisterResource and cudaGraphicsGLRegister[Buffer|Image] must be only used on device the registration happened. Therefore on SLI configurations when data for different frames is computed on different CUDA devices it is necessary to register the resources for each separatly. 
 
@@ -1680,7 +1680,7 @@ Figure 11. 驱动 API 是后向兼容的，而不是前向兼容
 
 > •Exclusive-process compute mode: Only one CUDA context may be created on the device across all processes in the system and that context may be current to as many threads as desired within the process that created that context. 
 
-•独占进程的计算模式：在系统的所有进程中只有一个 CUDA 上下文能够在设备上被创建，在创建了该上下文的进程内可以该上下文成为任意多的线程的当前上下文。
+•独占进程的计算模式：在系统的所有进程中只有一个 CUDA 上下文能够在设备上被创建，在创建了该上下文的进程内可以使该上下文成为任意多的线程的当前上下文。
 
 > •Exclusive-process-and-thread compute mode: Only one CUDA context may be created on the device across all processes in the system and that context may only be current to one thread at a time. 
 
@@ -1692,7 +1692,7 @@ Figure 11. 驱动 API 是后向兼容的，而不是前向兼容
 
 > This means, in particular, that a host thread using the runtime API without explicitly calling cudaSetDevice() might be associated with a device other than device 0 if device 0 turns out to be in the exclusive-process mode and used by another process, or in the exclusive-process-and-thread mode and used by another thread, or in prohibited mode. cudaSetValidDevices() can be used to set a device from a prioritized list of devices. 
 
-这意味着，如果设备 0 是 exclusive-process 模式并且被另一个进程所使用,或者是 exclusive-process-and-thread 模式被另一个线程所使用，亦或者是禁止模式时，特别地，使用运行时 API 的没有显式地调用 *cudaSetDevice()* 的 host 线程可能会被关联到设备 0 以外的一个设备。*cudaSetValidDevices()* 可被用于从设备优先级队列中设置一个设备。
+这意味着，如果设备 0 是 exclusive-process 模式并且被另一个进程所使用,或者是 exclusive-process-and-thread 模式被另一个线程所使用，亦或者是禁止模式时，特别地，使用运行时 API 的 host 线程没有显式地调用 *cudaSetDevice()* 的话，可能会被关联到设备 0 以外的一个设备。*cudaSetValidDevices()* 可被用于从设备优先级队列中设置一个设备。
 
 > Note also that, for devices featuring the Pascal architecture onwards (compute capability with major revision number 6 and higher), there exists support for Compute Preemption. This allows compute tasks to be preempted at instruction-level granularity, rather than thread block granularity as in prior Maxwell and Kepler GPU architecture, with the benefit that applications with long-running kernels can be prevented from either monopolizing the system or timing out. However, there will be context switch overheads associated with Compute Preemption, which is automatically enabled on those devices for which support exists. The individual attribute query function cudaDeviceGetAttribute() with the attribute cudaDevAttrComputePreemptionSupported can be used to determine if the device in use supports Compute Preemption. Users wishing to avoid context switch overheads associated with different processes can ensure that only one process is active on the GPU by selecting exclusive-process mode. 
 
