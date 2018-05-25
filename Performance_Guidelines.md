@@ -31,13 +31,9 @@ CUDA性能优化围绕三个基本策略展开：
 - 内存优化，以实现最大内存吞吐量;
 - 指令优化，以实现最大指令吞吐量。
 
-----------
-
 Which strategies will yield the best performance gain for a particular portion of an application depends on the performance limiters for that portion; optimizing instruction usage of a kernel that is mostly limited by memory accesses will not yield any significant performance gain, for example. Optimization efforts should therefore be constantly directed by measuring and monitoring the performance limiters, for example using the CUDA profiler. Also, comparing the  or  - whichever makes more sense - of a particular kernel to the corresponding peak theoretical throughput of the device indicates how much room for improvement there is for the kernel.
 
 对程序进行优化时不能盲目的使用优化策略，某个优化策略能够获得的性能提升取决于程序的性能瓶颈。比如，一个kernel的性能瓶颈是访存，那么指令类优化策略不会产生明显的性能提升。因此，在进行CUDA优化之前，应该先通过CUDA分析器（NVPP，nvprof）分析出程序的性能瓶颈，再选择对应的优化策略进行优化。直接简单的做法就是，将kernel的某个性能指标，比如，浮点运算吞吐量（floating-point operation throughput）或内存吞吐量（memory throughput）与GPU设备的相应理论峰值进行比较，可以得出该kernel在这方面还有多大的提升空间。
-
-----------
 
 ## 5.2. Maximize Utilization
 ## 5.2  如何最大化利用率
@@ -46,7 +42,6 @@ To maximize utilization the application should be structured in a way that it ex
 为了最大化GPU利用率，应该从多个层次尽可能多地发掘程序的并行性，从而充分的利用GPU资源，保证GPU的各个模块大部分时间都处于忙碌状态。
 下面将从上到下，依次从应用层次，设备层次，Multiprocessor层次三个层次，探究如何最大化GPU利用率
 
-----------
 
 ### 5.2.1. Application Level
 ### 5.2.1  应用层次
@@ -57,8 +52,6 @@ At a high level, the application should maximize parallel execution between the 
 For the parallel workloads, at points in the algorithm where parallelism is broken because some threads need to synchronize in order to share data with each other, there are two cases: Either these threads belong to the same block, in which case they should use __syncthreads() and share data through shared memory within the same kernel invocation, or they belong to different blocks, in which case they must share data through global memory using two separate kernel invocations, one for writing to and one for reading from global memory. The second case is much less optimal since it adds the overhead of extra kernel invocations and global memory traffic. Its occurrence should therefore be minimized by mapping the algorithm to the CUDA programming model in such a way that the computations that require inter-thread communication are performed within a single thread block as much as possible.
 
 在并行任务中，某些情况下一些线程需要进行互相通信，此时需要线程同步操作，常见有以下两种情况，（1）这些线程在一个线程块（block）中，这时使用__syncthreads()函数进行同步即可，并使用共享内存存储数据进行通信；（2）如果不在同一个block中，这种情况下必须使用两个独立的kernel，一个kernel负责向全局内存（Global Memory）写数据，一个kernel负责读数据。很明显，第二种情况会产生额外的kernel调用开销和Global Memory读写开销，不是理想情况。因此在设计并行算法时，应该尽可能将需要通信的线程放到一个block中。
-
-----------
 
 ### 5.2.2. Device Level
 ### 5.2.2. 设备层次
@@ -431,5 +424,139 @@ texture Memory或surface Memory的一些特性，使其在某些场景下，性�
  -  **压缩过的数据可以在一次操作中广播到其他变量中。**
  -  8-bit和16-bit的整型数据，可以选择性的转化为[0.0，1.0]或[-1.0,1.0]范围内的32位浮点值（请参阅Texture Memory）
 
+## 5.4. Maximize Instruction Throughput
+## 5.4. 最大化指令吞吐量
+
+To maximize instruction throughput the application should:
+要最大化指令吞吐量，编写CUDA程序时应该遵循以下规则：
+
+ - Minimize the use of arithmetic instructions with low throughput; this
+   includes trading precision for speed when it does not affect the end
+   result, such as using intrinsic instead of regular functions
+   (intrinsic functions are listed in Intrinsic Functions),
+   single-precision instead of double-precision, or flushing
+   denormalized numbers to zero; 
+ - Minimize divergent warps caused by
+   control flow instructions as detailed in Control Flow Instructions
+ - Reduce the number of instructions, for example, by optimizing out
+   synchronization points whenever possible as described in
+   Synchronization Instruction or by using restricted pointers as
+   described in __restrict__.
+
+ - 尽量少使用低吞吐量的算术指令;在不影响最后结果的情况下使用低精度类型，使用内部计算接口（见E.2. Intrinsic Functions）而不是自己实现， 使用单精度float而不是双精度double，或者将非规范化数字置为零;
+ - 尽量减少流程控制指令，即减少条件分支，详见5.4.2 Control Flow Instructions
+ - 减少指令的数量，例如，优化同步点（详见5.4.3 Synchronization Instruction）或使用 restricted pointers（如B.2.5. __restrict__中所述）
+
+In this section, throughputs are given in number of operations per clock cycle per multiprocessor. For a warp size of 32, one instruction corresponds to 32 operations, so if N is the number of operations per clock cycle, the instruction throughput is N/32 instructions per clock cycle.
+在本节中，吞吐量是每个多处理器每个时钟周期内处理的操作数。 对于一个warp，一条指令对应于32个操作，所以如果N是每个时钟周期处理的操作数量，则每个时钟周期的指令吞吐量是N / 32。
+
+All throughputs are for one multiprocessor. They must be multiplied by the number of multiprocessors in the device to get throughput for the whole device.
+吞吐量概念是对于一个SM而言的。整个设备的吞吐量是吞吐量乘以设备中的SM数量。
+
+### 5.4.1. Arithmetic Instructions
+### 5.4.1 算术指令
+Table 2 gives the throughputs of the arithmetic instructions that are natively supported in hardware for devices of various compute capabilities.
+表2给出了各种计算能设备中，硬件支持的基础算术指令的吞吐量。
+
+Table 2. Throughput of Native Arithmetic Instructions. (Number of Results per Clock Cycle per Multiprocessor)
+表2 内部原生指令的吞吐量。（得到计算结果需要的时钟周期数）
+
+Other instructions and functions are implemented on top of the native instructions. The implementation may be different for devices of different compute capabilities, and the number of native instructions after compilation may fluctuate with every compiler version. For complicated functions, there can be multiple code paths depending on input. cuobjdump can be used to inspect a particular implementation in a cubin object.
+其他指令和函数都是基于以上原生指令实现的。对于不同计算能力的设备，实现原理可能不同，对于不同的编译器版本，编译后的基础指令数量也可能不同。对于复杂的函数，对于不同的输入大小，内部可能会有多个实现版本。具体使用了哪个实现版本，可以使用cuobjdump工具查看cubin文件。
+
+The implementation of some functions are readily available on the CUDA header files (math_functions.h, device_functions.h, ...).
+CUDA的头文件（math_functions.h，device_functions.h，...）中已经给出了一些函数的实现。
+
+In general, code compiled with -ftz=true (denormalized numbers are flushed to zero) tends to have higher performance than code compiled with -ftz=false. Similarly, code compiled with -prec div=false (less precise division) tends to have higher performance code than code compiled with -prec div=true, and code compiled with -prec-sqrt=false (less precise square root) tends to have higher performance than code compiled with -prec-sqrt=true. The nvcc user manual describes these compilation flags in more details.
+一般来说，使用-ftz = true编译的代码（非规格化数字被刷新为零）往往比使用-ftz = false编译的代码具有更高的性能。 类似地，用-prec div = false编译的代码（低精度除法）往往比用-prec div = true编译的代码具有更高的性能，同样使用-prec-sqrt = false编译（低精度的平方根）比使用-prec-sqrt = true性能高。 nvcc用户手册更详细地描述了这些编译选项。
+
+#### Single-Precision Floating-Point Division
+#### 单精度浮点数除法
+__fdividef(x, y) (see Intrinsic Functions) provides faster single-precision floating-point division than the division operator.
+__fdividef（x，y）（请参阅Intrinsic Functions章节）是比除法运算符更快的单精度浮点除法。
+
+#### Single-Precision Floating-Point Reciprocal Square Root
+#### 单精度浮点倒数平方根
+To preserve IEEE-754 semantics the compiler can optimize 1.0/sqrtf() into rsqrtf() only when both reciprocal and square root are approximate, (i.e., with -prec-div=false and -prec-sqrt=false). It is therefore recommended to invoke rsqrtf() directly where desired.
+为了保证IEEE-754规则的正确性，只有当倒数计算和平方根计算都使用相同精度时（比如，都使用低精度，即-prec-div = false和-prec-sqrt = false），编译器会把1.0 / sqrtf（）优化为rsqrtf（）。因此建议直接调用rsqrtf（）函数，而不是等编译器去优化。
+
+#### Single-Precision Floating-Point Square Root
+#### 单精度浮点平方根
+Single-precision floating-point square root is implemented as a reciprocal square root followed by a reciprocal instead of a reciprocal square root followed by a multiplication so that it gives correct results for 0 and infinity.
+单精度浮点平方根实现为倒数平方根，后跟倒数，而不是倒数平方根，然后乘以，从而保证在0和无穷大时能得到正确结果。
+
+#### Sine and Cosine
+sinf(x), cosf(x), tanf(x), sincosf(x), and corresponding double-precision instructions are much more expensive and even more so if the argument x is large in magnitude.
+sinf（x），cosf（x），tanf（x），sincosf（x）以及相应的双精度版本耗时非常大。无论是单精度和双精度，如果x的值域超过一定阈值，耗时会变更大。
+
+More precisely, the argument reduction code (see Mathematical Functions for implementation) comprises two code paths referred to as the fast path and the slow path, respectively.
+更准确地说，根据参数大小会有两个代码版本（参见 Mathematical Functions for implementation章节）包括分别称为快速版本和慢速版本的两个。
+
+The fast path is used for arguments sufficiently small in magnitude and essentially consists of a few multiply-add operations. The slow path is used for arguments large in magnitude and consists of lengthy computations required to achieve correct results over the entire argument range.
+快速版本用于值域足够小的参数，基本上由少数乘加操作组成。 慢速版本用于值域较大的参数，包含为在整个参数范围内获得正确结果所需的冗长计算。
+
+At present, the argument reduction code for the trigonometric functions selects the fast path for arguments whose magnitude is less than 105615.0f for the single-precision functions, and less than 2147483648.0 for the double-precision functions.
+目前，对于三角函数而言，单精度float，如果x小于105615.0f，则执行快速代码版本；双精度double，如果x小于2147483648.0f，则执行快速代码版本。
+
+As the slow path requires more registers than the fast path, an attempt has been made to reduce register pressure in the slow path by storing some intermediate variables in local memory, which may affect performance because of local memory high latency and bandwidth (see Device Memory Accesses). At present, 28 bytes of local memory are used by single-precision functions, and 44 bytes are used by double-precision functions. However, the exact amount is subject to change.
+由于慢速版本比快速版本使用更多寄存器，因此会将一些中间变量存储在local Memory中，从而减少寄存器的使用量，避免影响程序并行度。但使用高延迟和低带宽的local Memory会一定程度上影响性能。 目前，单精度函数会使用28bytes大小的本地存储器，双精度函数使用44bytes。 在不同设备和不同编译器下，具体数量可能会不同。
+
+Due to the lengthy computations and use of local memory in the slow path, the throughput of these trigonometric functions is lower by one order of magnitude when the slow path reduction is required as opposed to the fast path reduction.
+由于在慢速baneb中，计算过程较长且需要使用本地存储器，这些三角函数，慢速版本的吞吐量比快速版本低一个数量级。
+
+#### Integer Arithmetic
+#### 整数运算
+Integer division and modulo operation are costly as they compile to up to 20 instructions. They can be replaced with bitwise operations in some cases: If n is a power of 2, (i/n) is equivalent to (i>>log2(n)) and (i%n) is equivalent to (i&(n-1)); the compiler will perform these conversions if n is literal.
+整数除法和模运算代价高达20个指令。 在某些情况下，它们可以用位运算代替：如果n是2的幂，则（i / n）等于（i >> log2（n））并且（i％n）等于（i＆1））; 如果n是常量，编译器将执行这些转换。
+
+__brev and __popc map to a single instruction and __brevll and __popcll to a few instructions.
+
+__[u]mul24 are legacy intrinsic functions that no longer have any reason to be used.
+__brev和__popc直接对应一条指令，__brevll和__popcll被编译成几条指令。
+__ [u]mul24是旧版本的内部函数，已经被舍弃。
+
+#### Half Precision Arithmetic
+#### 半精度计算
+In order to achieve good half precision floating-point add, multiply or multiply-add throughput it is recommended that the half2 datatype is used. Vector intrinsics (eg. __hadd2, __hsub2, __hmul2, __hfma2) can then be used to do two operations in a single instruction. Using half2 in place of two calls using half may also help performance of other intrinsics, such as warp shuffles.
+为了提高半精度浮点加法，乘法或乘加的吞吐量，建议使用half2数据类型。 然后可以使用向量内部函数（例如__hadd2，__hsub2，__hmul2，__hfma2），实现在单个指令中执行两个操作。 使用half2来代替调用两次half也可以帮助提高其他内部函数的性能，例如warp shuffles。
+
+The intrinsic __halves2half2 is provided to convert two half precision values to the half2 datatype.
+内部函数 __halves2half2可以将两个半精度值转换为half2数据类型。
+
+#### Type Conversion
+#### 类型转换
+Sometimes, the compiler must insert conversion instructions, introducing additional execution cycles. This is the case for:
+在以下情况中，编译器必须执行转换指令，导致执行周期增大。
+ - Functions operating on variables of type char or short whose operands generally need to be converted to int,
+ - Double-precision floating-point constants (i.e., those constants defined without any type suffix) used as input to single-precision floating-point computations (as mandated by C/C++ standards).
+This last case can be avoided by using single-precision floating-point constants, defined with an f suffix such as 3.141592653589793f, 1.0f, 0.5f.
+
+ - 函数参数是int类型，输入是char类型或者short类型，需要先将类型转化为int类型；
+ - 函数参数是单精度浮点类型，输入是双精度浮点类型常量（即那些没有任何类型后缀定义的浮点常量）。
+可以通过使用单精度浮点常量（用3.141592653589793f，1.0f，0.5f等f后缀定义）避免第二种情况。
+
+### 5.4.2. Control Flow Instructions
+### 5.4.2. 控制流程指令
+Any flow control instruction (if, switch, do, for, while) can significantly impact the effective instruction throughput by causing threads of the same warp to diverge (i.e., to follow different execution paths). If this happens, the different executions paths have to be serialized, increasing the total number of instructions executed for this warp.
+任何流程控制指令（if，switch，do，for，while）都可能会导致divergent warps（warp内线程走不同的执行路径），从而显著影响指令吞吐量。 在divergent warps内，不同的执行路径只能顺序执行，从而增加warp执行的指令总数，导致性能下降。
+
+To obtain best performance in cases where the control flow depends on the thread ID, the controlling condition should be written so as to minimize the number of divergent warps. This is possible because the distribution of the warps across the block is deterministic as mentioned in SIMT Architecture. A trivial example is when the controlling condition only depends on (threadIdx / warpSize) where warpSize is the warp size. In this case, no warp diverges since the controlling condition is perfectly aligned with the warps.
+在kernel中，控制流程往往是根据线程ID进行判断，在这种情景下，为了获得最佳性能，应该编写控制条件以最大限度地减少divergent warps的数量。这种解决方案是可行的，因为block内warp的分布是确定的（详见SIMT Architecture章节）。 一个简单的例子是，控制条件仅取决于（threadIdx / warpSize），其中warpSize是warp的大小。 在这种情况下，由于控制条件与warp完美对齐，warp内不存在条件分支。
+
+Sometimes, the compiler may unroll loops or it may optimize out short if or switch blocks by using branch predication instead, as detailed below. In these cases, no warp can ever diverge. The programmer can also control loop unrolling using the #pragma unroll directive (see #pragma unroll).
+有时，编译器可能会展开循环，或者可能会使用分支预测来优化短if或者switch（详细原理见下段）。 在这些情况下，也不会产divergent warps生。 程序员还可以使用#pragma unroll指令控制循环展开（请参阅#pragma unroll）。
+
+When using branch predication none of the instructions whose execution depends on the controlling condition gets skipped. Instead, each of them is associated with a per-thread condition code or predicate that is set to true or false based on the controlling condition and although each of these instructions gets scheduled for execution, only the instructions with a true predicate are actually executed. Instructions with a false predicate do not write results, and also do not evaluate addresses or read operands.
+当使用分支预测时，所有依赖于控制条件的指令都不会被跳过。根据控制条件，每个线程的这些指令都被标记（true or false）。当执行时，只有被标记为true的指令真正执行。标记为false的指令不会执行写入结果，翻译地址或读取操作数等操作。
+
+### 5.4.3. Synchronization Instruction
+
+### 5.4.3. 同步指令
+Throughput for __syncthreads() is 128 operations per clock cycle for devices of compute capability 3.x, 32 operations per clock cycle for devices of compute capability 6.0 and 7.0 and 64 operations per clock cycle for devices of compute capability 5.x, 6.1 and 6.2.
+
+Note that __syncthreads() can impact performance by forcing the multiprocessor to idle as detailed in Device Memory Accesses.
+对于计算能力3.x，__syncthreads（）的吞吐量为128个操作每个时钟周期;对于计算能力为6.0和7.0的设备，是32个操作每个时钟周期;对于计算能力为5.x，6.1和6.2的设备，是64个操作每个时钟周期。
+
+请注意，\__syncthreads()可能会强制SM空闲，从而影响性能，详见Device Memory Accesses章节。
 
   [1]: https://blog.csdn.net/litdaguang/article/details/79330973
