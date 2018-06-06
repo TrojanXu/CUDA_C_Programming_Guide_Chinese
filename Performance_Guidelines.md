@@ -100,14 +100,14 @@ The total amount of shared memory required for a block is equal to the sum of th
 一个block所需的共享内存总量等于静态分配的共享内存量与动态分配的共享内存量的总和（注：共享内存有静态和动态两种分配方式，详见https://devblogs.nvidia.com/using-shared-memory-cuda-cc/）。
 
 The number of registers used by a kernel can have a significant impact on the number of resident warps. For example, for devices of compute capability 6.x, if a kernel uses 64 registers and each block has 512 threads and requires very little shared memory, then two blocks (i.e., 32 warps) can reside on the multiprocessor since they require 2x512x64 registers, which exactly matches the number of registers available on the multiprocessor. But as soon as the kernel uses one more register, only one block (i.e., 16 warps) can be resident since two blocks would require 2x512x65 registers, which are more registers than are available on the multiprocessor. Therefore, the compiler attempts to minimize register usage while keeping register spilling (see Device Memory Accesses) and the number of instructions to a minimum. Register usage can be controlled using the maxrregcount compiler option or launch bounds as described in Launch Bounds.
-kernel中每个线程使用的寄存器数量对活跃warp的数量有重大影响。 例如，对于计算能力6.x的设备，如果每个thread使用64个寄存器并且每个block有512个线程（假设只需要很少的共享内存，即共享内存不会造成限制），则一个 multiprocessor 同时只能执行两个block（即32个warp），因为它们需要2x512x64寄存器，与multiprocessor上可用的寄存器数量完全一致。 这种情况下，如果一个thread哪怕多使用一个寄存器，那么只能执行一个block（即16个warp），因为两个block需要2×512×65个寄存器，多于multiprocessor上可用的寄存器数量。 因此，编译器进行编译优化，尽量减少寄存器使用量，从而防止寄存器溢出问题发生（请参阅“Device Memory Accesses”）。 开发者可以使用maxrregcount编译器选项或launch bounds来控制寄存器的使用量，如Launch Bounds章节中所述。
+kernel中每个线程使用的寄存器数量对活跃warp的数量有重大影响。 例如，对于计算能力6.x的设备，如果每个thread使用64个寄存器并且每个block有512个线程（假设只需要很少的共享内存，即共享内存不会造成限制），则一个 multiprocessor 同时只能执行两个block（即32个warp），因为它们需要2x512x64寄存器，与multiprocessor上可用的寄存器数量完全一致。 这种情况下，如果一个thread哪怕多使用一个寄存器，那么只能执行一个block（即16个warp），因为两个block需要2×512×65个寄存器，多于multiprocessor上可用的寄存器数量。 因此，编译器会在保持最少的寄存器溢出和指令执行数量的同时，尝试最小化寄存器使用量（请参阅“Device Memory Accesses”）。 开发者可以使用maxrregcount编译器选项或launch bounds来控制寄存器的使用量，如Launch Bounds章节中所述。
 
 Each double variable and each long long variable uses two registers.
 每个double和long long类型占用两个寄存器。
 
 The effect of execution configuration on performance for a given kernel call generally depends on the kernel code. Experimentation is therefore recommended. Applications can also parameterize execution configurations based on register file size and shared memory size, which depends on the compute capability of the device, as well as on the number of multiprocessors and memory bandwidth of the device, all of which can be queried using the runtime (see reference manual).
 
-执行配置对于给定kernel的性能影响通常取决于kernel代码。因此建议进行实验从而在当前设备上获得最佳性能（注：比如实验不同block大小下kernel的性能）。核函数的最佳运行配置是跟设备有关的，开发者可以根据寄存器数量和共享内存大小来修改执行配置，设备的寄存器数量，共享内存大小，设备的计算能力，multiprocessors的数量以及内存带宽，所有的这些参数都可以手册中查到。
+执行配置对于给定kernel的性能影响通常取决于kernel代码。因此建议进行实验从而在当前设备上获得最佳性能（注：比如实验不同block大小下kernel的性能）。开发者可以根据寄存器数量和共享内存大小（与设备的计算能力有关）、multiprocessors的数量以及设备的内存带宽来修改执行配置，所有的这些参数都可以手册中查到。
 
 The number of threads per block should be chosen as a multiple of the warp size to avoid wasting computing resources with under-populated warps as much as possible.
 在设置执行配置时，block大小应该尽量为warp的倍数，否则会生成一些空闲thread来对齐，造成计算资源浪费。注：GPU内的最小执行单元是warp，如果设置block大小为20，那么实际运行中，会生成12个空闲thread补齐一个warp来执行。
@@ -220,11 +220,11 @@ The CUDA Toolkit also provides a self-documenting, standalone occupancy calculat
 The first step in maximizing overall memory throughput for the application is to minimize data transfers with low bandwidth.
 That means minimizing data transfers between the host and the device, as detailed in Data Transfer between Host and Device, since these have much lower bandwidth than data transfers between global memory and the device    .
 That also means minimizing data transfers between global memory and the device by maximizing use of on-chip memory: shared memory and caches (i.e., L1 cache and L2 cache available on devices of compute capability 2.x and higher, texture cache and constant cache available on all devices).
-应用程序最大化整体内存吞吐量的首要步骤是，尽可能的减少低带宽的数据传输。换句话说就是要最大限度地减少主机和设备之间的数据传输，详见主机和设备之间的数据传输章节，因为主机和设备之间带宽非常低，远远低于全局内存的数据传输带宽。在设计CUDA应用程序时，要尽可能的使用片上（on-chip）内存，即共享内存和cache，最大限度地减少主机和设备之间的数据传输，所有的GPU都有纹理cache和常量cache，计算能力大于等于2.x的设备上有L1 和 L2 cache。
+应用程序最大化整体内存吞吐量的首要步骤是，尽可能的减少低带宽的数据传输。换句话说就是要最大限度地减少全局内存和设备之间的数据传输，详见主机和设备之间的数据传输章节，因为主机和设备之间带宽非常低，远远低于全局内存的数据传输带宽。在设计CUDA应用程序时，要尽可能的使用片上（on-chip）内存，即共享内存和cache，最大限度地减少主机和设备之间的数据传输，所有的GPU都有纹理cache和常量cache，计算能力大于等于2.x的设备上有L1 和 L2 cache。
 
 Shared memory is equivalent to a user-managed cache: The application explicitly allocates and accesses it. As illustrated in CUDA C Runtime, a typical programming pattern is to stage data coming from device memory into shared memory; in other words, to have each thread of a block:
 
-共享内存可以理解为用户可以管理的L1 cache（注：共享内存和L1 cache使用同一块硬件）：应用程序需要显式分配并访问共享内存。 如CUDA C Runtime章节所示，典型的共享内存使用模式是将全局内存的数据放入共享内存; 换句话说，每个thread内的流程如下：
+共享内存可以理解为用户可以管理的 cache：应用程序需要显式分配并访问共享内存。 如CUDA C Runtime章节所示，典型的共享内存使用模式是将全局内存的数据放入共享内存; 换句话说，每个thread内的流程如下：
 
 Load data from device memory to shared memory,
 Synchronize with all the other threads of the block so that each thread can safely read shared memory locations that were populated by different threads,
@@ -240,7 +240,7 @@ Write the results back to device memory.
 
 For some applications (e.g., for which global memory access patterns are data-dependent), a traditional hardware-managed cache is more appropriate to exploit data locality. As mentioned in Compute Capability 3.x and Compute Capability 7.x, for devices of compute capability 3.x and 7.x, the same on-chip memory is used for both L1 and shared memory, and how much of it is dedicated to L1 versus shared memory is configurable for each kernel call.
 
-而常规的cache是由硬件管理的。对于某些访存密集型应用，这类cache能够更好地利用数据局部性。正如Compute Capability 3.x和Compute Capability 7.x中所述，对于计算能力3.x和7.x的设备，L1 cache和共享内存使用相同的片上存储器，执行每一个kernel之前，可以使用相关API配置 L1 cache和共享内存的大小。
+对于某些应用，全局内存的访存行为是与具体数据相关的，这种情况下由硬件控制的传统cache就能更好地利用数据局部性。正如Compute Capability 3.x和Compute Capability 7.x中所述，对于计算能力3.x和7.x的设备，L1 cache和共享内存使用相同的片上存储器，执行每一个kernel之前，可以使用相关API配置 L1 cache和共享内存的大小。
     
 The throughput of memory accesses by a kernel can vary by an order of magnitude depending on access pattern for each type of memory. The next step in maximizing memory throughput is therefore to organize memory accesses as optimally as possible based on the optimal memory access patterns described in Device Memory Accesses. This optimization is especially important for global memory accesses as global memory bandwidth is low, so non-optimal global memory accesses have a higher impact on performance.
 
@@ -250,7 +250,7 @@ The throughput of memory accesses by a kernel can vary by an order of magnitude 
 ### 5.3.1 如何进行host和device之间的数据传输
 
 Applications should strive to minimize data transfer between the host and the device. One way to accomplish this is to move more code from the host to the device, even if that means running kernels with low parallelism computations. Intermediate data structures may be created in device memory, operated on by the device, and destroyed without ever being mapped by the host or copied to host memory.
-应用程序应尽量减少主机和设备之间的数据传输。 实现此目的的一种方法是将更多的运算任务从主机端移动到设备端，甚至可以为此牺牲kernel的并行性。这种情况下，计算步骤产生的中间数据一般存放在设备端内存中，可以有效地避免拷贝到主机端内存中。
+应用程序应尽量减少主机和设备之间的数据传输。 实现此目的的一种方法是将更多的运算任务从主机端移动到设备端，甚至可以为此牺牲kernel的并行性。计算过程中的中间数据可以直接在设备端内存中创建、使用和销毁，无需将它映射或者拷贝到主机端内存中。
 
 Also, because of the overhead associated with each transfer, batching many small transfers into a single large transfer always performs better than making each transfer separately.
 每次内存传输会有一些额外的开销，因此将多个小内存传输合并成一次大内存传输会获得一定的性能提升。
@@ -305,7 +305,7 @@ Global memory instructions support reading or writing words of size equal to 1, 
 全局存储器指令支持读取或写入1,2,4,8或16字节的数据。当且仅当所访问数据数据类型的大小是1,2,4,8或16字节且数据的地址是其大小的倍数时，该内存访问才会被编译成一条全局内存访问指令。
 
 If this size and alignment requirement is not fulfilled, the access compiles to multiple instructions with interleaved access patterns that prevent these instructions from fully coalescing. It is therefore recommended to use types that meet this requirement for data that resides in global memory.
-如果此大小和对齐要求未满足，则访问将编译为具有交叉存取模式的多条指令，以防止这些指令完全合并。 因此，建议使用满足要求的类型来存储全局内存中的数据。
+如果此大小和对齐要求未满足，则访问将编译为具有交叉存取模式的多条指令，导致这些指令无法完全合并 因此，建议使用满足要求的类型来存储全局内存中的数据。
 
 The alignment requirement is automatically fulfilled for the built-in types of char, short, int, long, longlong, float, double like float2 or float4.
 内置类型的char，short，int，long，longlong，float，double类型（如float2或float4）会自动满足对齐要求。
@@ -327,7 +327,7 @@ struct __align__(16) {
 };
 ```
 Any address of a variable residing in global memory or returned by one of the memory allocation routines from the driver or runtime API is always aligned to at least 256 bytes.
-由驱动API或者运行API分配的内存的地址，都是对齐至少256个字节。
+全局内存中单个变量的地址和由驱动API或运行时API分配的内存的地址，这两种地址都是对齐至少256个字节。
 
 Reading non-naturally aligned 8-byte or 16-byte words produces incorrect results (off by a few words), so special care must be taken to maintain alignment of the starting address of any value or array of values of these types. A typical case where this might be easily overlooked is when using some custom global memory allocation scheme, whereby the allocations of multiple arrays (with multiple calls to cudaMalloc() or cuMemAlloc()) is replaced by the allocation of a single large block of memory partitioned into multiple arrays, in which case the starting address of each array is offset from the block's starting address.
 读取非自然对齐的8字节或16字节字会产生不正确的结果，因此在为变量或者数组分配空间时，一定要注意保证起始地址的对齐。在自定义的全局内存分配方案中，这个问题很容易被忽略。自定义全局内存分配分案就是先申请一大块全局内存，然后通过地址偏移的方式为变量或者数组分配空间，优点是减少多次申请全局内存造成的额外开销。（自定义的全局内存分配方案可参照博客《[CUDA进阶第六篇-GPU资源（显存、句柄等）管理][1]》）
@@ -389,7 +389,7 @@ However, if two addresses of a memory request fall in the same memory bank, ther
 
 To get maximum performance, it is therefore important to understand how memory addresses map to memory banks in order to schedule the memory requests so as to minimize bank conflicts. This is described in Compute Capability 3.x, Compute Capability 5.x, Compute Capability 6.x, and Compute Capability 7.x for devices of compute capability 3.x, 5.x, 6.x and 7.x, respectively.
 
-为了获得最佳性能，必须了解内存地址是如何映射到共享内存bank上的，从而有效地设计访存模式，以最小化bank conflict。
+为了获得最佳性能，必须了解内存地址是如何映射到共享内存bank上的，从而有效地设计访存模式，以最小化bank conflict。这一部分在附录：计算能力章节中，有对应不同计算能力设备的详细描述。
 
 Constant Memory
 常量内存
@@ -400,15 +400,13 @@ A request is then split into as many separate requests as there are different me
 
 The resulting requests are then serviced at the throughput of the constant cache in case of a cache hit, or at the throughput of device memory otherwise.
 
-
-**然后，将请求分割为多个独立请求，因为初始请求中存在不同的内存地址，从而将吞吐量降低了一个等于单独请求数的因数。
-然后在缓存命中的情况下，以恒定缓存的吞吐量来处理所产生的请求，否则以设备存储器的吞吐量来处理所产生的请求。**
+在首次访存请求中，会根据访存地址数量被分为n个内存请求，吞吐量大概被降低了n倍。在缓存命中的情况下，处理这些请求的吞吐量与常量缓存的吞吐量一致，否则与设备存储器的吞吐量一致。
 
 Texture and Surface Memory
     The texture and surface memory spaces reside in device memory and are cached in texture cache, so a texture fetch or surface read costs one memory read from device memory only on a cache miss, otherwise it just costs one read from texture cache. The texture cache is optimized for 2D spatial locality, so threads of the same warp that read texture or surface addresses that are close together in 2D will achieve best performance. Also, it is designed for streaming fetches with a constant latency; a cache hit reduces DRAM bandwidth demand but not fetch latency.
 
 texture Memory和surface Memory位于设备内存中，并有对应的texture cache。texture cache针对2D空间局部性进行了优化，所以当warp内的线程读取texture Memory或surface Memory时，如果访存地址在二维坐标空间上越接近，则性能越好。
-**此外，它设计用于具有恒定延迟的流式抓取;高速缓存命中减少了DRAM带宽需求，但不能提取等待时间。**
+此外，它也被设计用于具有恒定延迟的流式抓取;高速缓存命中减少了DRAM带宽需求。
 
 Reading device memory through texture or surface fetching present some benefits that can make it an advantageous alternative to reading device memory from global or constant memory:
 
