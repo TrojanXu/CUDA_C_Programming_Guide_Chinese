@@ -33,7 +33,7 @@ need this additional level of control and when using the runtime, context and mo
 management are implicit, resulting in more concise code. The driver API is introduced
 in Driver API and fully described in the reference manual.
 ```
-Runtime是建立在更底层的C API之上的，即CUDA driver API，它同样可以被应用程序访问。Driver API将更底层的概念暴露给用户从而提供额外的控制，诸如CUDA contexts（类似于device对应的host进程）、CUDA modules（类似于device上动态加载的库）。大多数应用不需要调用driver API，因为它们不需要这一层面的控制。当使用runtime的时候，context和module的管理是隐式的，代码更加简洁。Driver API在驱动API章节[link]介绍，完整的描述请参考reference manual。
+Runtime API是建立在更底层的C API之上的，即CUDA driver API。开发者也可以直接调用CUDA driver API编写应用程序。Driver API将更底层的概念暴露给用户从而提供额外的控制，诸如CUDA contexts（类似于device对应的host进程）、CUDA modules（类似于device上动态加载的库）。大多数应用不需要调用driver API，因为它们不需要这一层面的控制。当使用runtime的时候，context和module的管理是隐式的，代码更加简洁。Driver API在驱动API章节[link]介绍，完整的描述请参考reference manual。
 
 ## 3.1 使用NVCC编译
 ```

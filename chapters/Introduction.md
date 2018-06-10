@@ -6,7 +6,7 @@ the programmable Graphic Processor Unit or GPU has evolved into a highly paralle
 multithreaded, manycore processor with tremendous computational horsepower and
 very high memory bandwidth, as illustrated by Figure 1 and Figure 2.
 ```
-市场对实时的、高精度的三维图形的需求是无法满足的，在这种需求的推动下，可编程图形处理器（GPU)已演变成高并行度、多线程的多核处理器，同时具有强大的计算能力和极高的存储器带宽，如图1和2所示：
+市场对实时的、高精度的3D图形处理器的需求是巨大的，在这种需求的推动下，可编程图形处理器（GPU)已演变成高并行度、多线程的多核处理器，同时具有强大的计算能力和极高的存储器带宽，如图1和2所示：
 ![figure_1](../resources/figure_1.png)
 图1. CPU和GPU的每秒浮点运算能力对比
 
@@ -20,7 +20,7 @@ GPU is that the GPU is specialized for compute-intensive, highly parallel comput
 transistors are devoted to data processing rather than data caching and flow control, as
 schematically illustrated by Figure 3.
 ```
-造成CPU和GPU之间浮点运算能力的差距的原因在于，GPU是针对高计算密度和高并行化的场景设计的，图形渲染就属于这一类型，这样就有更多的晶体管用来做数据处理而不是数据的缓存和流控，如图3所示
+造成CPU和GPU之间浮点运算能力的差距的原因在于，GPU是针对高计算密度和高并行化的场景设计的，图形渲染就属于这一类型。因此，在GPU内，大部分的晶体管设计用于进行数据处理任务，而不是用于缓存数据和流程控制（比如分支预测），如图3所示
 ![figure_3](../resources/figure_3.png)
 图3. GPU上更多的晶体管用于数据处理
 
@@ -29,7 +29,7 @@ More specifically, the GPU is especially well-suited to address problems that ca
 expressed as data-parallel computations - the same program is executed on many data
 elements in parallel - with high arithmetic intensity - the ratio of arithmetic operations to memory operations. Because the same program is executed for each data element, there is a lower requirement for sophisticated flow control, and because it is executed on many data elements and has high arithmetic intensity, the memory access latency can be hidden with calculations instead of big data caches.
 ```
-具体来说，GPU非常适合于解决一些可以被抽象成data parallel的计算问题，即并行地对多个数据单元做相同的高计算密度（计算操作/存储器操作）的操作。由于在每个数据元素上执行同样的程序，我们就不需要复杂的流控，并且由于在大量的数据元素上同时执行并且计算密度高，存储器访问的latency可以通过大量的计算隐藏而无需使用大的cache。（译者注：在大量的计算的同时，下一步使用的数据可以提前准备，在真正使用数据的时候已经准备好，看起来像读取数据的过程被隐藏了）
+具体来说，GPU非常适合于解决具有数据并行计算特性的任务，这类任务具有的特点是，并行地对多个数据单元做相同的高计算密度（即计算指令数量远大于存储器指令数量）的操作。由于在每个数据元素上执行同样的程序，我们就不需要复杂的流控，并且由于在大量的数据元素上同时执行并且计算密度高，存储器访问的latency可以通过大量的计算隐藏而无需使用大的cache。（译者注：在大量的计算的同时，下一步使用的数据可以提前准备，在真正使用数据的时候已经准备好，看起来像读取数据的过程被隐藏了）
 
 ```
 Data-parallel processing maps data elements to parallel processing threads. Many
@@ -75,7 +75,7 @@ scales its parallelism to leverage the increasing number of processor cores, muc
 3D graphics applications transparently scale their parallelism to manycore GPUs with
 widely varying numbers of cores.
 ```
-多核CPU和众核GPU的出现，意味着现在的主流处理器芯片已经是并行系统。此外，他们的并行度将继续以摩尔定律扩展。当前的挑战是开发可以透明地扩展并行度的软件，以利用数量上不断增加的处理器核心，类似三维图像应用可以在不同核心数的GPU上透明地扩展并行度。
+多核CPU和众核GPU的出现，意味着现在的主流处理器芯片已经是并行系统。此外，他们的并行度将继续以摩尔定律增大。当前的挑战是开发可以透明地扩展并行度的软件，以利用数量上不断增加的处理器核心，类似三维图像应用可以在不同核心数的GPU上透明地扩展并行度。（译者注：这里的透明指的是开发并行程序时，不需要开发者关注设备具有多少处理器核心这样的硬件细节，程序就可以在不同设备上充分利用并行计算能力。）
 
 ```
 The CUDA parallel programming model is designed to overcome this challenge while
@@ -108,7 +108,7 @@ within a GPU, in any order, concurrently or sequentially, so that a compiled CUD
 program can execute on any number of multiprocessors as illustrated by Figure 5, and
 only the runtime system needs to know the physical multiprocessor count.
 ```
-这种分解通过允许多个thread可以协作处理子问题从而保留了语言的表达性，同时还能实现自动扩展。实际上，每个thread block可以以任何的顺序、并行或串行地被调度在GPU上任何一个可能的多处理器上（multiprocessor）上，这就使得一个编译得到的CUDA程序可以在任何数量的multiprocessor上执行，如图5所示，只有运行时(Runtime)系统需要知道处理器物理multiprocessor数。
+这种分解通过允许多个thread可以协作处理子问题从而保留了语言的表达性，同时还能实现自动扩展。实际上，每个thread block可以以任何的顺序（并行或串行地）被调度在GPU上任何一个空闲的多处理器（multiprocessor）上，这就使得一个编译得到的CUDA程序可以在任何数量的multiprocessor上执行，如图5所示，只有运行时(Runtime)系统需要知道处理器物理multiprocessor数。
 ![figure_5](../resources/figure_5.png)
 图5. 自动扩展性
 
