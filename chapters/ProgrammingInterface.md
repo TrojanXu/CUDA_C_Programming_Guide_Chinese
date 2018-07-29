@@ -458,7 +458,49 @@ The simple zero-copy CUDA sample comes with a detailed document on the page- loc
 
 同样还要注意的是，从主机和其他设备的视角上看，作为单独访受到保护
 
-#### 3.2.4.1-3.2.4.3 missing
+#### 3.2.4.1 Portable内存
+```
+A block of page-locked memory can be used in conjunction with any device in the system (see Multi-Device System for more details on multi-device systems), but by default, the benefits of using page-locked memory described above are only available in conjunction with the device that was current when the block was allocated (and with all devices sharing the same unified address space, if any, as described in Unified Virtual Address Space). To make these advantages available to all devices, the block needs to be allocated by passing the flag cudaHostAllocPortable to cudaHostAlloc() or page- locked by passing the flag cudaHostRegisterPortable to cudaHostRegister().
+```
+Page-locked内存块可以与系统中的任何设备结合使用。（更多关于多设备系统的细节请参照3.2.6）但是默认情况下，前文描述的关于page-locked内存的优势只能体现在与当前设备结合使用的时候（指该内存块分配时的设备）或与任何与当前设备共享统一地址空间的设备（参考3.2.7）。为了让所有设备都能受益，需要通过传递 **cudaHostAllocPortable** 给 **cudaHostAlloc()** 来分配内存块，或者传递 **cudaHostRegisterPortable** 给 **cudaHostRegister()** 配置page-locked内存。
+#### 3.2.4.2 Write-Combining内存
+```
+By default page-locked host memory is allocated as cacheable. It can optionally be allocated as write-combining instead by passing flag cudaHostAllocWriteCombined to cudaHostAlloc(). Write-combining memory frees up the host's L1 and L2 cache resources, making more cache available to the rest of the application. In addition, write- combining memory is not snooped during transfers across the PCI Express bus, which can improve transfer performance by up to 40%.
+Reading from write-combining memory from the host is prohibitively slow, so write- combining memory should in general be used for memory that the host only writes to.
+```
+默认情况下，page-locked主机端内存被分配成可缓存的。可以选择性地通过传递参数 **cudaHostAllocWriteCombined** 给 **cudaHostAlloc()** 配置成write-combining的。Write-combining内存可以释放主机端的L1和L2缓存资源，这样给其它的应用腾出更多的缓存资源。 此外，write-combining内存在通过PCI-E传输的时候不必与缓存保持一致（No-snoop特性），这可以带来最多40%的传输性能提升。从主机端发起的write-combining内存读取操作会离谱地慢，因此一般来说write-comibining内存用于主机端对它只有写入操作的时候。
+
+#### 3.2.4.3 Mapped内存
+```
+A block of page-locked host memory can also be mapped into the address space of the device by passing flag cudaHostAllocMapped to cudaHostAlloc() or by passing flag cudaHostRegisterMapped to cudaHostRegister(). Such a block has therefore in general two addresses: one in host memory that is returned by cudaHostAlloc() or malloc(), and one in device memory that can be retrieved
+using cudaHostGetDevicePointer() and then used to access the block from within a kernel. The only exception is for pointers allocated with cudaHostAlloc() and when a unified address space is used for the host and the device as mentioned in Unified Virtual Address Space.
+```
+通过传递 **cudaHostAllocMapped** 给 **cudaHostAlloc()** 或者传递 **cudaHostRegisterMapped** 给 **cudaHostRegister()** ，可以将Page-locked主机内存块映射到设备端的地址空间。这样的内存块通常就有两个地址，一个是 **cudaHostAlloc()** 或者 **malloc()** 返回的主机剬地址和通过 **cudaHostGetDevicePointer()** 获取的设备端内存中的地址，后者可以用来在kernel内访问该内存块数据。这一描述对于 **cudaHostAlloc()** 分配的指针情形以及在3.2.7中提到的主机和设备端使用统一地址空间的情形并不适用。
+```
+Accessing host memory directly from within a kernel has several advantages:
+‣ There is no need to allocate a block in device memory and copy data between this block and the block in host memory; data transfers are implicitly performed as needed by the kernel;
+‣ There is no need to use streams (see Concurrent Data Transfers) to overlap data transfers with kernel execution; the kernel-originated data transfers automatically overlap with kernel execution.
+```
+在kernel中直接访问主机端的优点有：  
+- 不再需要在设备端内存分配一个内存块并在该内存块和主机端内存块之间拷贝数据；数据的传输按需隐式执行。
+- 不再需要用多个流（见3.2.5.4）来实现数据传输与kernel执行的重叠；由kernel内发起的数据传输会自动地与kernel执行重叠。
+```
+Since mapped page-locked memory is shared between host and device however, the application must synchronize memory accesses using streams or events (see Asynchronous Concurrent Execution) to avoid any potential read-after-write, write- after-read, or write-after-write hazards.
+To be able to retrieve the device pointer to any mapped page-locked memory, page- locked memory mapping must be enabled by calling cudaSetDeviceFlags() with the cudaDeviceMapHost flag before any other CUDA call is performed. Otherwise, cudaHostGetDevicePointer() will return an error.
+cudaHostGetDevicePointer() also returns an error if the device does not support mapped page-locked host memory. Applications may query this capability by checking the canMapHostMemory device property (see Device Enumeration), which is equal to 1 for devices that support mapped page-locked host memory.
+```
+由于mapped page-locked内存在主机和设备间共享，因此应用程序必须用流或事件（见3.2.5）同步内存访问操作避免任何可能存在的read-after-write，write-after-read或者write-after-write隐患。
+
+为了获取指向任意的mapped page-locked内存的设备端指针，page-locked内存映射必须在任何其他CUDA调用之前通过使用参数 **canMapHostMemory** 调用 **cudaSetDeviceFlags()** 开启， 否则 **cudaHostGetDevicePointer()** 会返回错误。
+
+如果设备不支持mapped page-locked主机内存， **cudaHostGetDevicePointer()** 也会返回错误。应用可以通过校验设备属性 **canMapHostMemory** （参见3.2.6.1）来查询是否支持， 如果值等于1意味着支持这一特性。
+```
+Note that atomic functions (see Atomic Functions) operating on mapped page-locked memory are not atomic from the point of view of the host or other devices.
+Also note that CUDA runtime requires that 1-byte, 2-byte, 4-byte, and 8-byte naturally aligned loads and stores to host memory initiated from the device are preserved as single accesses from the point of view of the host and other devices. On some platforms, atomics to memory may be broken by the hardware into separate load and store operations. These component load and store operations have the same requirements on preservation of naturally aligned accesses. As an example, the CUDA runtime does not support a PCI Express bus topology where a PCI Express bridge splits 8-byte naturally aligned writes into two 4-byte writes between the device and the host.
+```
+需要注意的是，从主机端或者其他设备端角度来看，在mapped page-locked内存上的原子函数（参见附录B.12）不是原子的。
+
+另外还需要注意的是，从主机端或者其他设备端的角度来看，CUDA运行时要求从设备发起的向主机的1-byte，2-byte，4-byte和8-byte自对齐的加载和存储操作保留单次的访问。在某些平台上，内存的原子操作会被硬件拆分成多个独立的加载和存储操作。这些组件的加载和存储操作对于保留自对齐访问也有同样的要求。举个例子，有些PCI-E总线拓扑结构中，PCI-E桥会将设备和主机间的自对齐的8-byte写操作拆分成两个4-byte写操作，CUDA运行时就不支持这种拓扑结构。
 
 ### 3.2.5 异步并发执行
 ```
@@ -732,10 +774,49 @@ any point in the program and query when these events are completed. An event has
 ```
 通过应用在在程序中任意点上记载时间和查询事件是否完成，运行时提供了密切监控设备进度和精确计时的方法。当事件记载点前面，事件指定的流中，所有的任务或者指定流中的命令全部完成时，事件才会被记载。流0中的事件之后在所有流中的所有命令执行完之后才被记载。
 
-##### 3.2.5.6.1 - 2 missing
-
-#### 3.2.5.7 missing
-
+##### 3.2.5.6.1 创建和销毁
+```
+The following code sample creates two events:
+```
+下面的示例代码创建了两个事件：
+```C
+cudaEvent_t start, stop;
+cudaEventCreate(&start);
+cudaEventCreate(&stop);
+```
+```
+They are destroyed this way:
+```
+通过这样的方式销毁：
+```
+cudaEventDestroy(start);
+cudaEventDestroy(stop);
+```
+##### 3.2.5.6.2 耗时
+```
+The events created in Creation and Destruction can be used to time the code sample of Creation and Destruction the following way:
+```
+在3.2.5.6.1中创建的事件可以通过这样的方式给3.2.5.5.1中的代码片段计时：
+```C
+cudaEventRecord(start, 0);
+for (int i = 0; i < 2; ++i) {
+    cudaMemcpyAsync(inputDev + i * size, inputHost + i * size,
+                    size, cudaMemcpyHostToDevice, stream[i]);
+    MyKernel<<<100, 512, 0, stream[i]>>>
+               (outputDev + i * size, inputDev + i * size, size);
+    cudaMemcpyAsync(outputHost + i * size, outputDev + i * size,
+                    size, cudaMemcpyDeviceToHost, stream[i]);
+}
+cudaEventRecord(stop, 0);
+cudaEventSynchronize(stop);
+float elapsedTime;
+cudaEventElapsedTime(&elapsedTime, start, stop);
+```
+#### 3.2.5.7 同步的函数调用
+```
+When a synchronous function is called, control is not returned to the host thread before the device has completed the requested task. Whether the host thread will then yield, block, or spin can be specified by calling cudaSetDeviceFlags()with some specific flags (see reference manual for details) before any other CUDA call is performed by the host thread.
+```
+当一个同步的函数被调用时，在执行完请求的设备端代码之前，控制权不会交还给主机端线程。如果想知道主机端线程会yield，block还是spin，可以在主机端线程调用其他CUDA函数之前，使用给定参数（细节请查看reference manual）调用 **cudaSetDeviceFlags()** 查看。
 
 
 
